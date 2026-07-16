@@ -49,8 +49,6 @@ class Permission(Base, TimestampMixin):
 
 class RolePermission(Base):
     __tablename__ = "role_permissions"
-    __table_args__ = (UniqueConstraint("role_id", "permission_id"),)
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     role_id: Mapped[int] = mapped_column(ForeignKey("roles.id"), primary_key=True)
     permission_id: Mapped[int] = mapped_column(ForeignKey("permissions.id"), primary_key=True)
