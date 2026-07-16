@@ -1,0 +1,99 @@
+version: "3.8"
+
+services:
+  # ---- PostgreSQL ----
+  db:
+    image: postgres:16-alpine
+    container_name: puiying-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: puiying
+      POSTGRES_PASSWORD: puiying_dev
+      POSTGRES_DB: puiying_apple
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U puiying -d puiying_apple"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ---- Redis (Celery broker) ----
+  redis:
+    image: redis:7-alpine
+    container_name: puiying-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ---- FastAPI Backend ----
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: puiying-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://puiying:puiying_dev@db:5432/puiying_apple
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: dev-secret-change-in-production
+      DEBUG: "true"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./apps/api:/app
+      - uploads:/app/uploads
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # ---- Next.js Frontend ----
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    container_name: puiying-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./apps/web:/app
+      - /app/node_modules
+      - /app/.next
+
+  # ---- Celery Worker (OCR) ----
+  worker:
+    build:
+      context: ./workers/ocr_worker
+      dockerfile: Dockerfile
+    container_name: puiying-worker
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://puiying:puiying_dev@db:5432/puiying_apple
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ./workers/ocr_worker:/app
+      - uploads:/app/uploads
+
+volumes:
+  pgdata:
+  uploads:

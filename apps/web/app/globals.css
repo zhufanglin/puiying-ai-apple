@@ -1,0 +1,12 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --sidebar-width: 240px;
+  --topbar-height: 56px;
+}
+
+body {
+  @apply bg-gray-50 text-gray-900 antialiased;
+}
