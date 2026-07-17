@@ -78,8 +78,8 @@ services:
   # ---- Celery Worker (OCR) ----
   worker:
     build:
-      context: ./workers/ocr_worker
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: workers/ocr_worker/Dockerfile
     container_name: puiying-worker
     restart: unless-stopped
     depends_on:
@@ -90,9 +90,20 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://puiying:puiying_dev@db:5432/puiying_apple
       REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      APPLE_STUDENTS_DATA_DIR: /app/data
+      OCR_ENGINE: ${OCR_ENGINE:-auto}
+      BAIDU_OCR_ENABLED: ${BAIDU_OCR_ENABLED:-false}
+      BAIDU_OCR_MODE: ${BAIDU_OCR_MODE:-handwriting}
+      BAIDU_OCR_API_KEY: ${BAIDU_OCR_API_KEY:-}
+      BAIDU_OCR_SECRET_KEY: ${BAIDU_OCR_SECRET_KEY:-}
+      BAIDU_OCR_ACCESS_TOKEN: ${BAIDU_OCR_ACCESS_TOKEN:-}
+      BAIDU_OCR_TIMEOUT: ${BAIDU_OCR_TIMEOUT:-20}
     volumes:
-      - ./workers/ocr_worker:/app
-      - uploads:/app/uploads
+      - ./workers/ocr_worker:/workspace/workers/ocr_worker
+      - ./apps/api/app/modules/apple/prompts:/workspace/apps/api/app/modules/apple/prompts:ro
+      - ./apps/api/data:/app/data
 
 volumes:
   pgdata:
