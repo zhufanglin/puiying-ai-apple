@@ -12,7 +12,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.cidfonts import UnicodeCIDFont
 from reportlab.pdfgen.canvas import Canvas
 
-from app.modules.apple.file_store import now_iso
+from app.modules.apple.students.file_store import now_iso
 from app.modules.apple.students.repository import StudentRepository
 from app.modules.apple.students.schemas import CertificateCreate
 from app.modules.apple.students.student_service import StudentNotFoundError

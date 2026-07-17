@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { EmptyState, LoadingState, PageHeader } from "@/components/shared";
-import { appleApi, importBulkAttendanceExcel, uploadStudentPhoto } from "@/lib/api";
-import type { Student, StudentSummary, StudentWorkItem, StudentWorkItemsResult } from "@/lib/types";
+import { EmptyState, LoadingState, PageHeader } from "./components";
+import { importBulkAttendanceExcel, studentMediaUrl, studentsApi, uploadStudentPhoto } from "@/lib/students-api";
+import type { Student, StudentSummary, StudentWorkItem, StudentWorkItemsResult } from "@/lib/students-api";
 
 type QueueCategory = "attendance" | "transcript_reissue" | "enrollment_certificate";
 type QueueFilters = { search: string; className: string; status: string; dateFrom: string; dateTo: string; page: number };
@@ -25,7 +25,7 @@ export default function StudentsPage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = async (query = "") => {
-    const [studentsResult, summaryResult] = await Promise.all([appleApi.students(query), appleApi.studentSummary()]);
+    const [studentsResult, summaryResult] = await Promise.all([studentsApi.students(query), studentsApi.summary()]);
     if (studentsResult.success) setStudents(studentsResult.data); else setMessage(studentsResult.error);
     if (summaryResult.success) setSummary(summaryResult.data); else setMessage(summaryResult.error);
     setLoading(false);
@@ -44,14 +44,14 @@ export default function StudentsPage() {
   };
 
   const requestDocument = async (student: Student, type: "transcript_reissue" | "enrollment_bilingual") => {
-    const result = await appleApi.createStudentCertificate(student.id, { certificateType: type, language: "bilingual", purpose: type === "transcript_reissue" ? "补领本学年成绩表" : "学校事务" });
+    const result = await studentsApi.createCertificate(student.id, { certificateType: type, language: "bilingual", purpose: type === "transcript_reissue" ? "补领本学年成绩表" : "学校事务" });
     setMessage(result.success ? (type === "transcript_reissue" ? "成绩表补领申请已建立" : "在学证明申请已建立") : result.error);
     if (result.success) await load(search);
   };
 
   const loadQueue = async (category: QueueCategory, filters: QueueFilters) => {
     setQueueLoading(true);
-    const result = await appleApi.studentWorkItems({
+    const result = await studentsApi.workItems({
       category,
       search: filters.search,
       className: filters.className,
@@ -196,7 +196,7 @@ function CreateStudentDialog({ onClose, onSaved }: { onClose: () => void; onSave
       if (!upload.success) { setError(upload.error); setSaving(false); return; }
       photoUrl = upload.data.photoUrl;
     }
-    const result = await appleApi.createStudent({ ...form, status: "active", admissionDate: form.admissionDate || null, parentEmail: form.parentEmail || null, photoUrl });
+    const result = await studentsApi.create({ ...form, status: "active", admissionDate: form.admissionDate || null, parentEmail: form.parentEmail || null, photoUrl });
     if (result.success) await onSaved(`${result.data.nameZh} 已新增`); else setError(result.error);
     setSaving(false);
   };
@@ -205,7 +205,7 @@ function CreateStudentDialog({ onClose, onSaved }: { onClose: () => void; onSave
 }
 
 function StudentPhoto({ student, compact = false }: { student: Student; compact?: boolean }) {
-  return <div className={compact ? "student-avatar compact" : "student-avatar"}>{student.photoUrl ? <img src={student.photoUrl} alt={`${student.nameZh} 学生照片`} /> : <span>{student.nameZh.slice(-1)}</span>}</div>;
+  return <div className={compact ? "student-avatar compact" : "student-avatar"}>{student.photoUrl ? <img src={studentMediaUrl(student.photoUrl)} alt={`${student.nameZh} 学生照片`} /> : <span>{student.nameZh.slice(-1)}</span>}</div>;
 }
 
 function Pagination({ page, totalPages, total, onPage }: { page: number; totalPages: number; total: number; onPage: (page: number) => Promise<void> }) {

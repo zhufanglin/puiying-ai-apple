@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import { EmptyState, LoadingState, PageHeader } from "@/components/shared";
-import { appleApi, importAttendanceExcel, studentCertificatePdfUrl, studentScoresExportUrl } from "@/lib/api";
-import type { AttendanceRecord, ScoreRecord, Student, StudentCertificate } from "@/lib/types";
+import { EmptyState, LoadingState, PageHeader } from "../components";
+import { importAttendanceExcel, studentCertificatePdfUrl, studentMediaUrl, studentScoresExportUrl, studentsApi } from "@/lib/students-api";
+import type { AttendanceRecord, ScoreRecord, Student, StudentCertificate } from "@/lib/students-api";
 
 type Tab = "profile" | "attendance" | "scores" | "certificates";
 const PAGE_SIZE = 8;
@@ -15,7 +15,7 @@ export default function StudentDetailPage() {
   const [tab, setTab] = useState<Tab>("profile");
   const [message, setMessage] = useState("");
   const attendanceFileRef = useRef<HTMLInputElement>(null);
-  const load = async () => { const result = await appleApi.student(id); if (result.success) setStudent(result.data); else setMessage(result.error); };
+  const load = async () => { const result = await studentsApi.student(id); if (result.success) setStudent(result.data); else setMessage(result.error); };
   useEffect(() => { const initial = new URLSearchParams(window.location.search).get("tab"); if (["profile", "attendance", "scores", "certificates"].includes(initial || "")) setTab(initial as Tab); void load(); }, [id]);
 
   const importAttendance = async (file?: File) => {
@@ -31,7 +31,7 @@ export default function StudentDetailPage() {
   return <>
     <PageHeader eyebrow="APPLE / 学生事务" title={`${student.nameZh} · ${student.studentNo}`} description={`${student.className} 班 · ${studentStatusLabel(student.status)}`} actions={<a className="button" href="/dashboard/apple/students">返回学生总览</a>} />
     {message && <section className="notice">{message}</section>}
-    <section className="panel student-identity"><div className="student-avatar">{student.photoUrl ? <img src={student.photoUrl} alt={`${student.nameZh} 学生照片`} /> : <span>{student.nameZh.slice(-1)}</span>}</div><div><strong>{student.nameZh}</strong><p>{student.nameEn || "未登记英文姓名"}</p><div className="card-line"><span className="pill brand">{student.studentNo}</span><span className="pill good">{student.className}</span></div></div></section>
+    <section className="panel student-identity"><div className="student-avatar">{student.photoUrl ? <img src={studentMediaUrl(student.photoUrl)} alt={`${student.nameZh} 学生照片`} /> : <span>{student.nameZh.slice(-1)}</span>}</div><div><strong>{student.nameZh}</strong><p>{student.nameEn || "未登记英文姓名"}</p><div className="card-line"><span className="pill brand">{student.studentNo}</span><span className="pill good">{student.className}</span></div></div></section>
     <section className="panel">
       <div className="sub-tabs" role="tablist">{([['profile', '基本信息'], ['attendance', '考勤记录'], ['scores', '成绩记录'], ['certificates', '证明申请']] as [Tab, string][]).map(([key, label]) => <button role="tab" aria-selected={tab === key} className={`sub-tab ${tab === key ? "active" : ""}`} onClick={() => setTab(key)} key={key}>{label}</button>)}</div>
       {tab === "profile" && <ProfileTab student={student} />}
@@ -44,10 +44,10 @@ export default function StudentDetailPage() {
 
 function ProfileTab({ student }: { student: Student }) {
   const rows = [["学号", student.studentNo], ["中文姓名", student.nameZh], ["英文姓名", student.nameEn || "未登记"], ["班级", student.className], ["入学日期", student.admissionDate || "未登记"], ["学生状态", studentStatusLabel(student.status)], ["家长姓名", student.parentName || "未登记"], ["家长电话", student.parentPhone || "未登记"], ["家长电邮", student.parentEmail || "未登记"]];
-  return <div className="profile-content"><div className="profile-photo-card"><span>学生照片</span><div className="student-avatar profile-photo">{student.photoUrl ? <img src={student.photoUrl} alt={`${student.nameZh} 学生照片`} /> : <span>{student.nameZh.slice(-1)}</span>}</div></div><div className="profile-grid">{rows.map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div></div>;
+  return <div className="profile-content"><div className="profile-photo-card"><span>学生照片</span><div className="student-avatar profile-photo">{student.photoUrl ? <img src={studentMediaUrl(student.photoUrl)} alt={`${student.nameZh} 学生照片`} /> : <span>{student.nameZh.slice(-1)}</span>}</div></div><div className="profile-grid">{rows.map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div></div>;
 }
 
-function AttendanceTab({ student, fileRef, onImport }: { student: Student; fileRef: React.RefObject<HTMLInputElement>; onImport: (file?: File) => Promise<void> }) {
+function AttendanceTab({ student, fileRef, onImport }: { student: Student; fileRef: React.RefObject<HTMLInputElement | null>; onImport: (file?: File) => Promise<void> }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -124,7 +124,7 @@ function CertificatesTab({ student, onSaved }: { student: Student; onSaved: (tex
   const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(1);
   const create = async () => {
-    const result = await appleApi.createStudentCertificate(student.id, { certificateType: type, language: type === "enrollment" ? "zh" : "bilingual", purpose });
+    const result = await studentsApi.createCertificate(student.id, { certificateType: type, language: type === "enrollment" ? "zh" : "bilingual", purpose });
     if (result.success) { setShowForm(false); await onSaved("申请已建立，可一键生成 PDF"); } else await onSaved(result.error);
   };
   const rows = (student.certificates || []).filter((row) =>

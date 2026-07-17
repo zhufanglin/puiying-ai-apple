@@ -9,7 +9,7 @@ from pathlib import Path
 
 from openpyxl import Workbook, load_workbook
 
-from app.modules.apple.file_store import AppleFileStore
+from app.modules.apple.students.file_store import StudentFileStore
 from app.modules.apple.students.attendance_service import AttendanceService
 from app.modules.apple.students.certificate_service import CertificateService
 from app.modules.apple.students.models import Attendance, CertificateRequest, Student
@@ -26,11 +26,10 @@ class StudentServicesTest(unittest.TestCase):
         source_data = Path(__file__).resolve().parents[5] / "data"
         data_dir = Path(self.temp.name) / "data"
         data_dir.mkdir()
-        shutil.copy2(source_data / "apple_state.json", data_dir / "apple_state.json")
-        shutil.copytree(source_data / "imports", data_dir / "imports")
+        shutil.copy2(source_data / "apple_students_state.json", data_dir / "apple_students_state.json")
         self.previous_data_dir = os.environ.get("APPLE_DATA_DIR")
         os.environ["APPLE_DATA_DIR"] = str(data_dir)
-        self.store = AppleFileStore()
+        self.store = StudentFileStore()
         self.repository = StudentRepository(self.store)
         self.students = StudentService(self.repository)
         self.attendance = AttendanceService(self.repository)
@@ -94,9 +93,9 @@ class StudentServicesTest(unittest.TestCase):
         workbook = Workbook()
         sheet = workbook.active
         sheet.append(["学号", "日期", "状态", "备注"])
-        sheet.append(["S26001", "2026-07-20", "迟到", "交通延误"])
-        sheet.append(["S26002", "2026-07-20", "病假", "已交证明"])
-        sheet.append(["S99999", "2026-07-20", "缺席", "不存在的学生"])
+        sheet.append(["S26001", "2026-08-20", "迟到", "交通延误"])
+        sheet.append(["S26002", "2026-08-20", "病假", "已交证明"])
+        sheet.append(["S99999", "2026-08-20", "缺席", "不存在的学生"])
         stream = BytesIO(); workbook.save(stream)
         result = self.attendance.import_bulk_excel(stream.getvalue(), "attendance-bulk.xlsx")
         self.assertEqual(result["imported"], 2)

@@ -60,12 +60,12 @@ app.include_router(auth_router, prefix=settings.API_PREFIX)
 # from app.modules.apple.awards.router import router as awards_router
 # from app.modules.apple.finance.router import router as finance_router
 # from app.modules.apple.assets.router import router as assets_router
-# from app.modules.apple.students.router import router as students_router
+from app.modules.apple.students.router import router as students_router
 
 # app.include_router(awards_router, prefix=f"{settings.API_PREFIX}/apple/awards", tags=["Apple-奖状奖学金"])
 # app.include_router(finance_router, prefix=f"{settings.API_PREFIX}/apple/finance", tags=["Apple-财务收支"])
 # app.include_router(assets_router, prefix=f"{settings.API_PREFIX}/apple/assets", tags=["Apple-资产盘点"])
-# app.include_router(students_router, prefix=f"{settings.API_PREFIX}/apple/students", tags=["Apple-学生事务"])
+app.include_router(students_router)
 
 
 # ============== 全局异常处理 ==============

@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from app.modules.apple.file_store import now_iso
+from app.modules.apple.students.file_store import now_iso
 from app.modules.apple.students.repository import StudentRepository
 
 

@@ -18,7 +18,7 @@ router = APIRouter(prefix="/api/v1/apple/students", tags=["Apple - 学生事务"
 
 
 def response(data: Any, **extra: Any) -> dict[str, Any]:
-    return {"data": data, **extra}
+    return {"code": 0, "message": "success", "data": data, **extra}
 
 
 def not_found() -> HTTPException:

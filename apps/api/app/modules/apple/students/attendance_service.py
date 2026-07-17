@@ -6,7 +6,7 @@ from typing import Any
 
 from openpyxl import load_workbook
 
-from app.modules.apple.file_store import now_iso
+from app.modules.apple.students.file_store import now_iso
 from app.modules.apple.students.repository import StudentRepository
 from app.modules.apple.students.schemas import AttendanceStatus
 from app.modules.apple.students.student_service import StudentNotFoundError

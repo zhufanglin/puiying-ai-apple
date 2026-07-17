@@ -26,7 +26,7 @@ from app.modules.approvals.models import Approval                               
 # from app.modules.apple.awards.models import Award, Certificate
 # from app.modules.apple.finance.models import Receipt, Budget
 # from app.modules.apple.assets.models import Asset, AssetMovement
-# from app.modules.apple.students.models import Student, LeaveRequest
+from app.modules.apple.students.models import Attendance, CertificateRequest, Student  # noqa: F401
 
 target_metadata = Base.metadata
 

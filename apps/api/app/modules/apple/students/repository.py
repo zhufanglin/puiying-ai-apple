@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.modules.apple.file_store import AppleFileStore, now_iso, store
+from app.modules.apple.students.file_store import StudentFileStore, now_iso, store
 
 
 class StudentRepository:
-    def __init__(self, storage: AppleFileStore | None = None) -> None:
+    def __init__(self, storage: StudentFileStore | None = None) -> None:
         self.storage = storage or store
 
     def state(self) -> dict[str, Any]:
