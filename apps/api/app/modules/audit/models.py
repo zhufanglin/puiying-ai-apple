@@ -2,6 +2,7 @@
 from typing import Optional
 
 from sqlalchemy import BigInteger, String, Text
+from sqlalchemy import JSON
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -17,5 +18,5 @@ class AuditLog(Base, TimestampMixin):
     module: Mapped[str] = mapped_column(String(50), comment="归属模块")
     entity_type: Mapped[str] = mapped_column(String(50), comment="实体类型: award / receipt / asset / student")
     entity_id: Mapped[Optional[int]] = mapped_column(comment="实体ID")
-    detail: Mapped[Optional[dict]] = mapped_column(JSONB, comment="变更详情（前后对比）")
+    detail: Mapped[Optional[dict]] = mapped_column(JSON().with_variant(JSONB(), "postgresql"), comment="变更详情（前后对比）")
     ip_address: Mapped[Optional[str]] = mapped_column(String(50), comment="操作IP")

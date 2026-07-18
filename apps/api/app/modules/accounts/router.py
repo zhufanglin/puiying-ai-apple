@@ -2,6 +2,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.common.errors import AUTH_LOGIN_FAILED, raise_error
 from app.common.schemas import APIResponse, LoginRequest, TokenResponse
@@ -16,7 +17,7 @@ router = APIRouter(prefix="/auth", tags=["认证"])
 async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
     """用户登录，返回 JWT token"""
     result = await db.execute(
-        select(User).where(User.username == body.username)
+        select(User).options(selectinload(User.role)).where(User.username == body.username)
     )
     user = result.scalar_one_or_none()
 

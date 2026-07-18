@@ -16,6 +16,7 @@ class Role(Base, TimestampMixin):
     description: Mapped[Optional[str]] = mapped_column(String(200), comment="描述")
 
     users: Mapped[list["User"]] = relationship(back_populates="role")
+    permissions: Mapped[list["RolePermission"]] = relationship(back_populates="role")
 
 
 # ============== 用户表 ==============
@@ -32,7 +33,6 @@ class User(Base, TimestampMixin):
     is_active: Mapped[bool] = mapped_column(default=True, comment="是否启用")
 
     role: Mapped["Role"] = relationship(back_populates="users")
-    permissions: Mapped[list["RolePermission"]] = relationship(secondary="role_permissions", viewonly=True)
 
 
 # ============== 权限表 ==============
@@ -52,3 +52,6 @@ class RolePermission(Base):
 
     role_id: Mapped[int] = mapped_column(ForeignKey("roles.id"), primary_key=True)
     permission_id: Mapped[int] = mapped_column(ForeignKey("permissions.id"), primary_key=True)
+
+    role: Mapped["Role"] = relationship(back_populates="permissions")
+    permission: Mapped["Permission"] = relationship()

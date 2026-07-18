@@ -1,5 +1,5 @@
 """应用配置（环境变量统一入口）"""
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 
 
@@ -30,9 +30,7 @@ class Settings(BaseSettings):
     AI_API_URL: str = ""
     AI_API_KEY: str = ""
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
 
 
 @lru_cache()

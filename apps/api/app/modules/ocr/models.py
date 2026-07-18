@@ -2,6 +2,7 @@
 from typing import Optional
 
 from sqlalchemy import BigInteger, Integer, String, Text
+from sqlalchemy import JSON
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -18,6 +19,6 @@ class OCRJob(Base, TimestampMixin):
         comment="pending / processing / completed / failed"
     )
     result_text: Mapped[Optional[str]] = mapped_column(Text, comment="OCR 原始文本")
-    result_json: Mapped[Optional[dict]] = mapped_column(JSONB, comment="OCR 结构化结果")
+    result_json: Mapped[Optional[dict]] = mapped_column(JSON().with_variant(JSONB(), "postgresql"), comment="OCR 结构化结果")
     error_message: Mapped[Optional[str]] = mapped_column(String(500), comment="失败原因")
     created_by: Mapped[int] = mapped_column(comment="提交者 user_id")

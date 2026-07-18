@@ -5,11 +5,17 @@ from app.core.config import get_settings
 
 settings = get_settings()
 
+# SQLite 不支持 pool_size / max_overflow，需区分处理
+_engine_kwargs = {
+    "echo": settings.DEBUG,
+}
+if not settings.DATABASE_URL.startswith("sqlite"):
+    _engine_kwargs["pool_size"] = 10
+    _engine_kwargs["max_overflow"] = 20
+
 engine = create_async_engine(
     settings.DATABASE_URL,
-    echo=settings.DEBUG,
-    pool_size=10,
-    max_overflow=20,
+    **_engine_kwargs,
 )
 
 async_session_factory = async_sessionmaker(

@@ -58,7 +58,7 @@ async def get_current_user(
 ):
     """从 JWT 中提取当前登录用户，返回 User ORM 对象 + 权限列表"""
     from app.modules.accounts.models import User
-    from app.modules.accounts.models import RolePermission, Permission
+    from app.modules.accounts.models import Role, RolePermission
 
     token = credentials.credentials
     payload = decode_access_token(token)
@@ -69,7 +69,7 @@ async def get_current_user(
     result = await db.execute(
         select(User)
         .options(
-            selectinload(User.role).selectinload(RolePermission).selectinload(RolePermission.permission)
+            selectinload(User.role).selectinload(Role.permissions).selectinload(RolePermission.permission)
         )
         .where(User.id == user_id)
     )
