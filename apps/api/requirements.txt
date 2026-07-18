@@ -12,7 +12,7 @@ python-multipart==0.0.19
 celery[redis]==5.4.0
 httpx==0.28.1
 python-docx==1.1.2
-docxtpl==0.18.1
+docxtpl>=0.18.0
 openpyxl==3.1.5
 paddleocr>=3.7.0
 pillow==11.1.0
