@@ -120,7 +120,7 @@ export default function StudentsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="搜索姓名/學號/班級..."
-            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full pl-10 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
         </div>
         <span className="text-sm text-gray-500">
