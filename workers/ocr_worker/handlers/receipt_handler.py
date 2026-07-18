@@ -1,65 +1,156 @@
-from __future__ import annotations
+"""收据 OCR 处理器 — 对应 receipt_extract_zh_hk.md Prompt
+
+流程:
+    获取 OCR 原始文本 → 正则/AI 提取字段 → 结构化 JSON
+
+输出格式（严格按文档 §4 Prompt 文件 2 定义）:
+    {
+        "fields": {
+            "amount": 0.0,
+            "currency": "HKD",
+            "date": "YYYY-MM-DD",
+            "payer": "...",
+            "purpose": "..."
+        },
+        "confidence": "low|medium|high",
+        "warnings": [],
+        "raw_text": "..."
+    }
+"""
 
 import re
-from datetime import datetime
-from typing import Any
-
-from .prompt_loader import load_prompt
+from typing import Optional
 
 
-class ReceiptHandler:
-    prompt_name = "receipt_extract_zh_hk"
+# ================================================================
+# 正则模式 — 香港收据常见格式
+# ================================================================
 
-    def process(self, text: str, ocr_confidence: float) -> dict[str, Any]:
-        warnings: list[str] = []
-        amount = self._amount(text)
-        parsed_date = self._date(text)
+_PATTERNS = {
+    "amount": [
+        r"HK\$\s*([\d,]+\.?\d*)",
+        r"HKD\s*\$?\s*([\d,]+\.?\d*)",
+        r"港幣\s*\$?\s*([\d,]+\.?\d*)",
+        r"金額[：:\s]*\$?\s*([\d,]+\.?\d*)",
+        r"金額[：:\s]*HK\$\s*([\d,]+\.?\d*)",
+        r"總額[：:\s]*\$?\s*([\d,]+\.?\d*)",
+        r"合計[：:\s]*\$?\s*([\d,]+\.?\d*)",
+        r"\$([\d,]+\.?\d*)",
+    ],
+    "date": [
+        r"(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日",
+        r"(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?!\d)",
+        r"(\d{1,2})\/(\d{1,2})\/(\d{4})",
+        r"日期[：:\s]*(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日",
+    ],
+    "payer": [
+        r"付款人[：:\s]*(.+)",
+        r"經手人[：:\s]*(.+)",
+        r"繳款人[：:\s]*(.+)",
+        r"Payer[：:\s]*(.+)",
+    ],
+    "purpose": [
+        r"用途[：:\s]*(.+)",
+        r"項目[：:\s]*(.+)",
+        r"事項[：:\s]*(.+)",
+        r"Purpose[：:\s]*(.+)",
+        r"備註[：:\s]*(.+)",
+    ],
+}
+
+
+def _extract(text: str, patterns: list[str]) -> Optional[str]:
+    """从文本中提取第一个匹配"""
+    for pat in patterns:
+        m = re.search(pat, text, re.IGNORECASE)
+        if m:
+            if m.lastindex and m.lastindex >= 3:
+                groups = m.groups()
+                if len(groups) == 3 and all(g and g.isdigit() for g in groups[:3] if g):
+                    y, mo, d = groups[0], groups[1], groups[2]
+                    return f"{y}-{mo.zfill(2)}-{d.zfill(2)}"
+            return m.group(1).strip() if m.lastindex else m.group(0).strip()
+    return None
+
+
+def _parse_amount(raw: Optional[str]) -> Optional[float]:
+    if not raw:
+        return None
+    cleaned = raw.replace(",", "").replace("，", "").replace(" ", "")
+    try:
+        return float(cleaned)
+    except ValueError:
+        return None
+
+
+async def handle_receipt_ocr(job_id: int) -> dict:
+    """处理收据 OCR 任务
+
+    完整流程（严格按 receipt_extract_zh_hk.md）:
+    1. 查数据库获取 OCR 原始文本
+    2. 正则提取字段
+    3. 计算置信度 + 生成警告
+    4. 返回结构化 JSON
+    """
+    from sqlalchemy import select
+    from app.db.session import SessionLocal
+    from app.modules.ocr.models import OCRJob
+
+    async with SessionLocal() as db:
+        result = await db.execute(select(OCRJob).where(OCRJob.id == job_id))
+        job = result.scalar_one_or_none()
+        if not job or not job.result_text:
+            return {
+                "fields": {"amount": None, "currency": "HKD", "date": "", "payer": "", "purpose": ""},
+                "confidence": "low",
+                "warnings": ["OCR 文本为空"],
+                "raw_text": "",
+            }
+
+        raw_text = job.result_text
+
+        # 提取字段
+        amount_raw = _extract(raw_text, _PATTERNS["amount"])
+        date_raw = _extract(raw_text, _PATTERNS["date"])
+        payer_raw = _extract(raw_text, _PATTERNS["payer"])
+        purpose_raw = _extract(raw_text, _PATTERNS["purpose"])
+
+        amount = _parse_amount(amount_raw)
+        date_val = date_raw or ""
+        payer = (payer_raw or "").strip()
+        purpose = (purpose_raw or "").strip()
+
+        # 置信度
+        filled = sum([amount is not None, bool(date_val), bool(payer), bool(purpose)])
+        if filled >= 3:
+            confidence = "high"
+        elif filled >= 2:
+            confidence = "medium"
+        else:
+            confidence = "low"
+
+        # 警告 — 文档要求: 金额不确定时返回 null; 手写字识别不出时 warnings 说明
+        warnings = []
         if amount is None:
-            warnings.append("金额无法可靠识别，必须对照原图人工填写。")
-        if parsed_date is None:
-            warnings.append("日期无法可靠识别或日月次序不明确。")
-        if ocr_confidence < 0.70:
-            warnings.append("OCR 平均信心低于 0.70。")
-        confidence = "low" if warnings else "high" if ocr_confidence >= 0.85 else "medium"
+            warnings.append("未能识别金额，请手动填写")
+        if not date_val:
+            warnings.append("未能识别日期")
+        if not payer:
+            warnings.append("未能识别付款人")
+        if not purpose:
+            warnings.append("未能识别用途")
+        if confidence == "low":
+            warnings.append("OCR 识别信心较低，建议仔细核对所有字段 — 手写字可能识别不准")
+
         return {
             "fields": {
                 "amount": amount,
-                "currency": "HKD" if re.search(r"HK\$|HKD|港幣|港币", text, re.I) else None,
-                "date": parsed_date,
-                "payer": self._after_label(text, ["付款人", "繳款人", "缴款人", "收到"]),
-                "purpose": self._after_label(text, ["用途", "摘要", "活動費", "活动费"]),
+                "currency": "HKD",
+                "date": date_val,
+                "payer": payer,
+                "purpose": purpose,
             },
             "confidence": confidence,
             "warnings": warnings,
-            "raw_text": text,
-            "prompt": {"name": self.prompt_name, "content": load_prompt(self.prompt_name)},
+            "raw_text": raw_text,
         }
-
-    @staticmethod
-    def _amount(text: str) -> float | None:
-        match = re.search(r"(?:HK\$|HKD|港幣|港币)?\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.\d{1,2})|[0-9]+\.\d{1,2})", text, re.I)
-        if not match:
-            return None
-        try:
-            return float(match.group(1).replace(",", ""))
-        except ValueError:
-            return None
-
-    @staticmethod
-    def _date(text: str) -> str | None:
-        match = re.search(r"(?<!\d)(\d{1,2})[/-](\d{1,2})[/-](\d{4})(?!\d)", text)
-        if not match:
-            return None
-        try:
-            return datetime(int(match.group(3)), int(match.group(2)), int(match.group(1))).date().isoformat()
-        except ValueError:
-            return None
-
-    @staticmethod
-    def _after_label(text: str, labels: list[str]) -> str | None:
-        for label in labels:
-            match = re.search(rf"{re.escape(label)}[：:\s]*([^\n；;]{{1,40}})", text)
-            if match:
-                return match.group(1).strip()
-        return None
-

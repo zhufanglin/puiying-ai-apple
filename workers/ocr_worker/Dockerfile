@@ -1,19 +1,20 @@
 FROM python:3.12-slim
 
-WORKDIR /workspace
+WORKDIR /app
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-chi-tra \
-    && rm -rf /var/lib/apt/lists/*
+# 系统依赖（OCR 需要 libgomp1 等）
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc libpq-dev libgomp1 && \
+    rm -rf /var/lib/apt/lists/*
 
-COPY workers/ocr_worker/requirements.txt /tmp/ocr-requirements.txt
-RUN pip install --no-cache-dir -r /tmp/ocr-requirements.txt
+# Python 依赖（与 API 共用 requirements.txt）
+COPY ../api/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-COPY workers /workspace/workers
-COPY apps/api/app/modules/apple/prompts /workspace/apps/api/app/modules/apple/prompts
+# Worker 代码
+COPY . .
 
-ENV PYTHONPATH=/workspace
-ENV APPLE_STUDENTS_DATA_DIR=/app/data
-ENV OCR_ENGINE=auto
+# 创建上传目录
+RUN mkdir -p uploads
 
-CMD ["celery", "-A", "workers.ocr_worker.main.celery_app", "worker", "--loglevel=INFO", "--concurrency=2"]
+CMD ["celery", "-A", "main", "worker", "--loglevel=info", "--concurrency=2"]

@@ -25,7 +25,6 @@ from app.core.config import get_settings
 from app.core.security import hash_password
 from app.db.session import async_session_factory
 from app.modules.accounts.models import User, Role, Permission, RolePermission
-from app.modules.apple.awards.models import AwardTemplate
 
 settings = get_settings()
 
@@ -158,26 +157,6 @@ async def seed():
             )
             db.add(admin)
             print("  ✅ 管理员: admin / admin123")
-
-        # ---- 奖状 & 奖学金 种子数据 ----
-        print("创建奖状模板...")
-        award_templates = [
-            ("三好学生", "德智体美劳全面发展的优秀学生", "学业"),
-            ("优秀班干部", "在班级管理中表现突出的学生干部", "品德"),
-            ("成绩优异奖", "学期考试总成绩排名年级前列", "学业"),
-            ("学业进步奖", "本学期学习成绩进步显著", "学业"),
-            ("品德风尚奖", "在品德行为方面表现突出", "品德"),
-            ("最佳志愿者", "积极参与社会服务与志愿活动", "活动"),
-            ("科技竞赛奖", "在校内/校外科技竞赛中获奖", "活动"),
-            ("全勤奖", "本学期无缺勤、无迟到早退", "其他"),
-        ]
-        for name, desc, cat in award_templates:
-            existing = (await db.execute(
-                select(AwardTemplate).where(AwardTemplate.name == name)
-            )).scalar_one_or_none()
-            if not existing:
-                db.add(AwardTemplate(name=name, description=desc, category=cat))
-                print(f"  ✅ 奖状模板: {name}")
 
         await db.commit()
         print("\n🎉 种子数据导入完成！")
