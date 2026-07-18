@@ -132,3 +132,66 @@ class ReceiptPromptResult(BaseModel):
 class ReceiptAIStructureResponse(ReceiptPromptResult):
     provider: Literal["deepseek"] = "deepseek"
     model: str
+
+
+class InvoiceAIStructureRequest(ReceiptAIStructureRequest):
+    """把资产发票 OCR 原文交给 DeepSeek 做受控字段结构化。"""
+
+
+class InvoiceAIFields(BaseModel):
+    asset_name: Optional[str] = Field(default=None, max_length=300)
+    category: Optional[
+        Literal["IT設備", "傢俱", "電器", "辦公設備", "其他"]
+    ] = None
+    amount: Optional[float] = Field(default=None, ge=0)
+    currency: Optional[Literal["HKD"]] = None
+    purchase_date: Optional[str] = None
+    vendor: Optional[str] = Field(default=None, max_length=200)
+    invoice_no: Optional[str] = Field(default=None, max_length=100)
+    multiple_items: bool
+
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("purchase_date")
+    @classmethod
+    def validate_iso_date(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        try:
+            return date_type.fromisoformat(value).isoformat()
+        except ValueError as exc:
+            raise ValueError("购买日期必须为 YYYY-MM-DD 或 null") from exc
+
+    @field_validator("asset_name", "vendor", "invoice_no")
+    @classmethod
+    def normalize_optional_text(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        value = value.strip()
+        return value or None
+
+
+class InvoicePromptResult(BaseModel):
+    """资产发票字段经白名单归一化及 OCR 原文证据校验后的内部契约。"""
+
+    fields: InvoiceAIFields
+    confidence: Literal["low", "medium", "high"]
+    warnings: list[str] = Field(default_factory=list, max_length=20)
+    raw_text: str = Field(max_length=30_000)
+
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("warnings")
+    @classmethod
+    def normalize_warnings(cls, values: list[str]) -> list[str]:
+        normalized: list[str] = []
+        for value in values:
+            warning = str(value).strip()[:300]
+            if warning and warning not in normalized:
+                normalized.append(warning)
+        return normalized
+
+
+class InvoiceAIStructureResponse(InvoicePromptResult):
+    provider: Literal["deepseek"] = "deepseek"
+    model: str

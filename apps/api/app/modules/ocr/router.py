@@ -10,9 +10,12 @@ from app.db.session import get_db
 from app.modules.accounts.models import User
 from app.modules.files.models import File
 from app.modules.ocr.celery_client import enqueue_ocr_job
+from app.modules.ocr.invoice_ai_service import AIInvoiceError, structure_invoice_with_ai
 from app.modules.ocr.models import OCRJob
 from app.modules.ocr.receipt_ai_service import AIReceiptError, structure_receipt_with_ai
 from app.modules.ocr.schemas import (
+    InvoiceAIStructureRequest,
+    InvoiceAIStructureResponse,
     OCRJobCreate,
     OCRJobResponse,
     ReceiptAIStructureRequest,
@@ -92,5 +95,26 @@ async def structure_receipt(
     try:
         result = await structure_receipt_with_ai(body, x_ai_api_key)
     except AIReceiptError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return APIResponse(data=result)
+
+
+@router.post(
+    "/invoice/structure",
+    response_model=APIResponse[InvoiceAIStructureResponse],
+)
+async def structure_invoice(
+    body: InvoiceAIStructureRequest,
+    user: User = Depends(get_current_user),
+    x_ai_api_key: str | None = Header(default=None, alias="X-AI-API-Key"),
+):
+    """调用 DeepSeek 结构化资产发票；Key 仅用于本次请求且不落库。"""
+
+    del user  # 仅要求已登录；禁止记录发票 OCR 原文或用户 Key。
+    if not x_ai_api_key:
+        raise HTTPException(status_code=422, detail="请输入 DeepSeek API Key")
+    try:
+        result = await structure_invoice_with_ai(body, x_ai_api_key)
+    except AIInvoiceError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     return APIResponse(data=result)
