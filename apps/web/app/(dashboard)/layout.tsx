@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Award,
@@ -49,6 +49,20 @@ export default function DashboardLayout({
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+
+  // 鉴权检查
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.replace("/");
+    }
+  }, [router]);
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    router.replace("/");
+  };
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -96,7 +110,7 @@ export default function DashboardLayout({
 
         {/* 底部 */}
         <div className="border-t border-gray-100 p-2">
-          <button className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 rounded-lg">
+          <button onClick={handleLogout} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 rounded-lg">
             <LogOut size={18} />
             {!collapsed && <span>退出</span>}
           </button>
