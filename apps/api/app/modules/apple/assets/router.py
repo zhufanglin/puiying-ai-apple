@@ -75,7 +75,7 @@ async def create_asset(
     asset = await repository.create_asset(db, data, user.id)
 
     db.add(AuditLog(user_id=user.id, action="create", module="assets",
-                    entity_type="asset", entity_id=str(asset.id)))
+                    entity_type="asset", entity_id=asset.id))
     await db.flush()
     return APIResponse(data=asset)
 
@@ -107,7 +107,7 @@ async def update_asset(
     asset = await repository.update_asset(db, asset, data)
 
     db.add(AuditLog(user_id=user.id, action="update", module="assets",
-                    entity_type="asset", entity_id=str(asset.id)))
+                    entity_type="asset", entity_id=asset.id))
     await db.flush()
     return APIResponse(data=asset)
 
@@ -125,7 +125,7 @@ async def delete_asset(
     await repository.delete_asset(db, asset)
 
     db.add(AuditLog(user_id=user.id, action="delete", module="assets",
-                    entity_type="asset", entity_id=str(asset_id)))
+                    entity_type="asset", entity_id=asset_id))
     await db.flush()
     return APIResponse(message="已删除")
 
@@ -179,7 +179,7 @@ async def create_asset_movement(
     })
 
     db.add(AuditLog(user_id=user.id, action="move", module="assets",
-                    entity_type="asset", entity_id=str(asset.id)))
+                    entity_type="asset", entity_id=asset.id))
     await db.flush()
     return APIResponse(data=movement)
 
