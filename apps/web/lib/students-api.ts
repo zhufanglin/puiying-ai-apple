@@ -84,7 +84,7 @@ export interface ExcelImportResult {
 type ApiResult<T> = { success: true; data: T } | { success: false; data: null; error: string };
 type Envelope<T> = { code?: number; message?: string; data: T };
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8100";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const STUDENTS_ROOT = `${API_URL}/api/v1/apple/students`;
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<ApiResult<T>> {

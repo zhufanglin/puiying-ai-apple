@@ -1,5 +1,6 @@
 """Alembic 环境配置（异步）"""
 import asyncio
+import os
 from logging.config import fileConfig
 
 from alembic import context
@@ -29,6 +30,12 @@ from app.modules.apple.assets.models import Asset, AssetMovement              # 
 # from app.modules.apple.students.models import Student, LeaveRequest         # noqa: F401
 
 target_metadata = Base.metadata
+
+# 支持通过 DATABASE_URL 环境变量覆盖 alembic.ini 中的 sqlalchemy.url
+# 用于本地 SQLite 测试：DATABASE_URL=sqlite+aiosqlite:///./test.db alembic upgrade head
+_custom_url = os.environ.get("DATABASE_URL")
+if _custom_url:
+    config.set_main_option("sqlalchemy.url", _custom_url)
 
 
 def run_migrations_offline() -> None:
