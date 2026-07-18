@@ -6,6 +6,7 @@ interface ConfirmDialogProps {
   open: boolean;
   title: string;
   message: string;
+  variant?: string;
   confirmText?: string;
   cancelText?: string;
   danger?: boolean;

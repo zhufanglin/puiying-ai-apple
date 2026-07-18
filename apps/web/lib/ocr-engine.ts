@@ -80,12 +80,12 @@ async function getWorker(language: string): Promise<Tesseract.Worker> {
     }
   );
 
-  await workerInstance.setParameters({
+  await workerInstance!.setParameters({
     preserve_interword_spaces: "1",
     tessedit_pageseg_mode: Tesseract.PSM.AUTO,
   });
 
-  return workerInstance;
+  return workerInstance!;
 }
 
 export function terminateWorker(): void {
@@ -139,7 +139,7 @@ async function extractPDFText(file: File): Promise<PDFExtractResult> {
       if (!str || !str.trim()) continue;
 
       // 用 transform 获取坐标
-      const tx = "transform" in item ? item.transform : [1, 0, 0, 1, 0, 0];
+      const tx: number[] = "transform" in item ? (item as any).transform : [1, 0, 0, 1, 0, 0];
       const x = tx[4];
       const y = tx[5];
 
@@ -336,7 +336,7 @@ export async function recognizeImage(
     const worker = await getWorker(language);
     const result = await worker.recognize(canvas);
 
-    const lines: OcrLine[] = (result.data.lines || []).map((line) => ({
+    const lines: OcrLine[] = (result.data.lines || []).map((line: any) => ({
       text: line.text.trim(),
       confidence: line.confidence,
       bbox: line.bbox,
@@ -354,7 +354,7 @@ export async function recognizeImage(
   const worker = await getWorker(language);
   const result = await worker.recognize(processed);
 
-  const lines: OcrLine[] = (result.data.lines || []).map((line) => ({
+  const lines: OcrLine[] = (result.data.lines || []).map((line: any) => ({
     text: line.text.trim(),
     confidence: line.confidence,
     bbox: line.bbox,

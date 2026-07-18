@@ -268,7 +268,7 @@ export default function AssetsPage() {
               <div className="px-4 py-3 border-b border-[#d8dee6] bg-[#f8fafc]">
                 <h3 className="text-sm font-bold text-[#344054]">最近搬移記錄</h3>
               </div>
-              <DataTable columns={moveCols} data={movements as unknown as Record<string,unknown>[]} total={movements.length} page={1} pageSize={10} emptyText="暫無搬移記錄" />
+              <DataTable columns={moveCols} data={movements} total={movements.length} page={1} pageSize={10} emptyText="暫無搬移記錄" />
             </div>
           )}
 
@@ -281,7 +281,7 @@ export default function AssetsPage() {
                 <h3 className="text-[15px] font-bold text-[#1d2939]">{loc}</h3>
                 <span className="text-xs text-[#667085]">（{items.length} 件）</span>
               </div>
-              <DataTable columns={stockCols} data={items as unknown as Record<string,unknown>[]} total={items.length} page={1} pageSize={50} emptyText="該地點暫無資產" />
+              <DataTable columns={stockCols} data={items} total={items.length} page={1} pageSize={50} emptyText="該地點暫無資產" />
             </div>
           ))}
         </div>
@@ -301,7 +301,7 @@ export default function AssetsPage() {
           {filteredWriteoff.length===0 ? (
             <p className="text-center text-[#667085] py-16">暫無註銷記錄</p>
           ) : (
-            <DataTable columns={woffCols} data={filteredWriteoff as unknown as Record<string,unknown>[]} total={filteredWriteoff.length} page={1} pageSize={20} emptyText="暫無註銷記錄" />
+            <DataTable columns={woffCols} data={filteredWriteoff} total={filteredWriteoff.length} page={1} pageSize={20} emptyText="暫無註銷記錄" />
           )}
         </div>
       )}

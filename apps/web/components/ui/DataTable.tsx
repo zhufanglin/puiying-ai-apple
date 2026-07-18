@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export interface Column<T> {
   key: string;
-  header: string;
+  header: React.ReactNode;
   render?: (row: T) => React.ReactNode;
   width?: string;
   align?: "left" | "center" | "right";
@@ -21,7 +21,7 @@ interface DataTableProps<T> {
   emptyText?: string;
 }
 
-export default function DataTable<T extends Record<string, unknown>>({
+export default function DataTable<T>({
   columns,
   data,
   total = 0,
@@ -76,7 +76,7 @@ export default function DataTable<T extends Record<string, unknown>>({
                         col.align === "center" ? "text-center" : col.align === "right" ? "text-right" : "text-left"
                       }`}
                     >
-                      {col.render ? col.render(row) : String(row[col.key] ?? "")}
+                      {col.render ? col.render(row) : String((row as Record<string, unknown>)[col.key] ?? "")}
                     </td>
                   ))}
                 </tr>

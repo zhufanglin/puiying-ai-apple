@@ -212,7 +212,7 @@ export default function FinancePage() {
             {key:"project",label:"項目",type:"text",placeholder:"項目名"},
           ]} values={ifilters} onChange={(k,v)=>setIfilters(p=>({...p,[k]:v}))} onReset={()=>setIfilters({})} onSearch={()=>{}} />
 
-          <DataTable columns={incomeCols} data={filteredIncome as unknown as Record<string,unknown>[]} total={filteredIncome.length} page={1} pageSize={20} emptyText="暫無收入記錄" />
+          <DataTable columns={incomeCols} data={filteredIncome} total={filteredIncome.length} page={1} pageSize={20} emptyText="暫無收入記錄" />
         </div>
       )}
 
@@ -231,7 +231,7 @@ export default function FinancePage() {
             {key:"supplier",label:"供應商",type:"text",placeholder:"供應商名"},
           ]} values={efilters} onChange={(k,v)=>setEfilters(p=>({...p,[k]:v}))} onReset={()=>setEfilters({})} onSearch={()=>{}} />
 
-          <DataTable columns={expenseCols} data={filteredExpense as unknown as Record<string,unknown>[]} total={filteredExpense.length} page={1} pageSize={20} emptyText="暫無支出記錄" />
+          <DataTable columns={expenseCols} data={filteredExpense} total={filteredExpense.length} page={1} pageSize={20} emptyText="暫無支出記錄" />
         </div>
       )}
 
