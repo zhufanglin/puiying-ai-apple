@@ -19,7 +19,7 @@ export default function ConfirmDialog({
   open,
   title,
   message,
-  confirmText = "确认",
+  confirmText = "確認",
   cancelText = "取消",
   danger,
   onConfirm,
@@ -33,7 +33,7 @@ export default function ConfirmDialog({
       {/* 遮罩 */}
       <div className="absolute inset-0 bg-black/30" onClick={onCancel} />
 
-      {/* 弹窗 */}
+      {/* 彈窗 */}
       <div className="relative bg-white rounded-xl shadow-xl border border-gray-200 w-full max-w-sm p-6 mx-4">
         <div className="flex items-start gap-3 mb-4">
           {danger && (
@@ -62,7 +62,7 @@ export default function ConfirmDialog({
               danger ? "bg-red-500 hover:bg-red-600" : "bg-primary-500 hover:bg-primary-600"
             } disabled:opacity-50`}
           >
-            {loading ? "处理中..." : confirmText}
+            {loading ? "處理中..." : confirmText}
           </button>
         </div>
       </div>

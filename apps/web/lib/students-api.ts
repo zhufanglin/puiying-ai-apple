@@ -97,11 +97,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<ApiR
     const payload = await response.json() as Envelope<T> | { detail?: string; message?: string };
     if (!response.ok) {
       const error = "detail" in payload ? payload.detail : payload.message;
-      return { success: false, data: null, error: error || `请求失败 (${response.status})` };
+      return { success: false, data: null, error: error || `請求失敗 (${response.status})` };
     }
     return { success: true, data: (payload as Envelope<T>).data };
   } catch (error) {
-    return { success: false, data: null, error: error instanceof Error ? error.message : "网络请求失败" };
+    return { success: false, data: null, error: error instanceof Error ? error.message : "網絡請求失敗" };
   }
 }
 

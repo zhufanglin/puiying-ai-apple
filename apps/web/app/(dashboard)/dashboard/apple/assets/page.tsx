@@ -36,14 +36,14 @@ const MOCK_ASSETS: AssetRecord[] = [
   { id:1, assetNo:"IT-2020-001", name:"Dell 桌上電腦", category:"IT設備", location:"3樓教員室", status:"active", purchaseDate:"2020-03-15", purchaseAmount:8500, remark:"教師辦公用" },
   { id:2, assetNo:"IT-2020-002", name:"Dell 桌上電腦", category:"IT設備", location:"3樓教員室", status:"active", purchaseDate:"2020-03-15", purchaseAmount:8500, remark:"教師辦公用" },
   { id:3, assetNo:"IT-2021-015", name:"HP 筆記本電腦", category:"IT設備", location:"3樓教員室", status:"moved", purchaseDate:"2021-09-01", purchaseAmount:12000, remark:"已搬移至地下校務處" },
-  { id:4, assetNo:"FN-2019-008", name:"辦公桌", category:"家具", location:"3樓教員室", status:"active", purchaseDate:"2019-06-20", purchaseAmount:2500, remark:"" },
-  { id:5, assetNo:"FN-2019-009", name:"辦公椅", category:"家具", location:"3樓教員室", status:"active", purchaseDate:"2019-06-20", purchaseAmount:800, remark:"" },
+  { id:4, assetNo:"FN-2019-008", name:"辦公桌", category:"傢俱", location:"3樓教員室", status:"active", purchaseDate:"2019-06-20", purchaseAmount:2500, remark:"" },
+  { id:5, assetNo:"FN-2019-009", name:"辦公椅", category:"傢俱", location:"3樓教員室", status:"active", purchaseDate:"2019-06-20", purchaseAmount:800, remark:"" },
   { id:6, assetNo:"EL-2018-003", name:"投影儀 PM-2019-032", category:"電器", location:"3樓教員室", status:"written_off", purchaseDate:"2018-01-10", purchaseAmount:15000, remark:"燈泡老化、無法維修" },
   { id:7, assetNo:"IT-2022-020", name:"iPad 平板 (教師用)", category:"IT設備", location:"地下校務處", status:"active", purchaseDate:"2022-08-25", purchaseAmount:4800, remark:"" },
   { id:8, assetNo:"IT-2022-021", name:"iPad 平板 (教師用)", category:"IT設備", location:"地下校務處", status:"active", purchaseDate:"2022-08-25", purchaseAmount:4800, remark:"" },
-  { id:9, assetNo:"FN-2021-012", name:"文件櫃", category:"家具", location:"地下校務處", status:"active", purchaseDate:"2021-03-10", purchaseAmount:3200, remark:"存放學生檔案" },
+  { id:9, assetNo:"FN-2021-012", name:"文件櫃", category:"傢俱", location:"地下校務處", status:"active", purchaseDate:"2021-03-10", purchaseAmount:3200, remark:"存放學生檔案" },
   { id:10, assetNo:"EL-2022-007", name:"空調 (3匹)", category:"電器", location:"地下校務處", status:"active", purchaseDate:"2022-07-01", purchaseAmount:9000, remark:"" },
-  { id:11, assetNo:"FN-2023-005", name:"書架", category:"家具", location:"4樓課室", status:"missing", purchaseDate:"2023-02-14", purchaseAmount:1500, remark:"2025盤點時未找到" },
+  { id:11, assetNo:"FN-2023-005", name:"書架", category:"傢俱", location:"4樓課室", status:"missing", purchaseDate:"2023-02-14", purchaseAmount:1500, remark:"2025盤點時未找到" },
   { id:12, assetNo:"EL-2021-010", name:"音響設備", category:"電器", location:"4樓課室", status:"active", purchaseDate:"2021-11-05", purchaseAmount:6500, remark:"" },
   { id:13, assetNo:"IT-2023-025", name:"Chromebook", category:"IT設備", location:"4樓課室", status:"active", purchaseDate:"2023-05-18", purchaseAmount:3500, remark:"學生用" },
   { id:14, assetNo:"IT-2023-026", name:"Chromebook", category:"IT設備", location:"4樓課室", status:"active", purchaseDate:"2023-05-18", purchaseAmount:3500, remark:"學生用" },
@@ -107,14 +107,14 @@ export default function AssetsPage() {
     const nm: MovementRecord = {
       id: movements.length+1, assetNo: a.assetNo, assetName: a.name,
       fromLocation:d.fromLocation, toLocation:d.toLocation,
-      movementDate:d.movementDate, reason:d.reason, operator:"當前用戶",
+      movementDate:d.movementDate, reason:d.reason, operator:"當前用户",
     };
     setMovements(p=>[nm,...p]);
   };
 
   /**
-   * 资产注销 — 严格按文档 §5.2 asset_writeoff_service 流程:
-   * 更新 status=written_off → 创建 Approval(pending) → 写 AuditLog
+   * 資產註銷 — 嚴格按文檔 §5.2 asset_writeoff_service 流程:
+   * 更新 status=written_off → 創建 Approval(pending) → 寫 AuditLog
    */
   const handleWriteoff = async (d: { assetId: number; reason: string }) => {
     const a = assets.find((x) => x.id === d.assetId);
@@ -122,7 +122,7 @@ export default function AssetsPage() {
 
     const now = new Date().toISOString();
 
-    // 1. 更新本地状态 — status → written_off
+    // 1. 更新本地狀態 — status → written_off
     setAssets((p) =>
       p.map((x) =>
         x.id === d.assetId
@@ -131,20 +131,20 @@ export default function AssetsPage() {
               status: "written_off",
               written_off_reason: d.reason,
               written_off_at: now,
-              remark: d.reason, // 同步到 remark 用于注销列表展示
+              remark: d.reason, // 同步到 remark 用於註銷列表展示
             }
           : x
       )
     );
 
-    // 2. 尝试调用后端 API（开发期后端不可用时跳过）
+    // 2. 嘗試調用後端 API（開發期後端不可用時跳過）
     try {
       const { api } = await import("@/lib/api");
       await api.post(`/apple/assets/${d.assetId}/writeoff`, {
         reason: d.reason,
       });
     } catch {
-      // 后端不可用，本地状态已更新（演示期 mock 模式）
+      // 後端不可用，本地狀態已更新（演示期 mock 模式）
     }
   };
 
@@ -334,7 +334,7 @@ export default function AssetsPage() {
                 <select value={form.category} onChange={e=>setForm(p=>({...p,category:e.target.value}))}
                   className="w-full text-sm border border-[#d8dee6] rounded-lg px-[9px] py-[8px] focus:outline-none focus:border-[#23675f]">
                   <option value="">請選擇類別</option>
-                  {["IT設備","家具","電器","辦公設備","其他"].map(o=><option key={o} value={o}>{o}</option>)}
+                  {["IT設備","傢俱","電器","辦公設備","其他"].map(o=><option key={o} value={o}>{o}</option>)}
                 </select>
               </div>
               <div>

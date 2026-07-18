@@ -40,7 +40,7 @@ export default function AwardDetailPage() {
   const [calcResult, setCalcResult] = useState<CalculateResult | null>(null);
   const [calculating, setCalculating] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const [currentStep, setCurrentStep] = useState(1); // 1=设置规则, 2=检视结果, 3=已确认
+  const [currentStep, setCurrentStep] = useState(1); // 1=設置規則, 2=檢視結果, 3=已確認
   const [rulesText, setRulesText] = useState("");
   const [calcError, setCalcError] = useState<string | null>(null);
   const [scriptDialogOpen, setScriptDialogOpen] = useState(false);
@@ -54,14 +54,14 @@ export default function AwardDetailPage() {
       .finally(() => setLoading(false));
   }, [params.id]);
 
-  // 自动将 amount 预填入核算规则的默认值（免去再次填写）
+  // 自動將 amount 預填入核算規則的默認值（免去再次填寫）
   useEffect(() => {
     if (award?.amount && !rulesText) {
       setRulesText(`默認, ${award.amount}`);
     }
   }, [award?.amount]);
 
-  // 根据后端状态初始化核算步骤（避免刷新后 step 归零）
+  // 根據後端狀態初始化核算步驟（避免刷新後 step 歸零）
   useEffect(() => {
     if (award?.status === "confirmed") {
       setCurrentStep(3);
@@ -121,7 +121,7 @@ export default function AwardDetailPage() {
     },
   ];
 
-  // 奖学金核算
+  // 獎學金核算
   const handleCalculate = async () => {
     setCalcError(null);
     setCalculating(true);
@@ -141,8 +141,8 @@ export default function AwardDetailPage() {
       }
       const res = await awardApi.calculateScholarship(award!.id, rules);
       setCalcResult(res.data);
-      setCurrentStep(2); // 进入检视与调整
-      // 刷新奖状数据以更新状态
+      setCurrentStep(2); // 進入檢視與調整
+      // 刷新獎狀數據以更新狀態
       const updated = await awardApi.getAward(award!.id);
       setAward(updated.data);
     } catch (e: any) {
@@ -156,8 +156,8 @@ export default function AwardDetailPage() {
     setConfirming(true);
     try {
       await awardApi.confirmScholarship(award!.id);
-      setCurrentStep(3); // 已确认
-      // 刷新奖状数据以更新状态
+      setCurrentStep(3); // 已確認
+      // 刷新獎狀數據以更新狀態
       const updated = await awardApi.getAward(award!.id);
       setAward(updated.data);
     } catch (e: any) {
@@ -227,9 +227,9 @@ export default function AwardDetailPage() {
         </div>
       </div>
 
-      {/* 双栏布局：学生列表 / 奖学金核算与确认 */}
+      {/* 雙欄佈局：學生列表 / 獎學金核算與確認 */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-4">
-        {/* 左栏：获奖学生列表（不变） */}
+        {/* 左欄：獲獎學生列表（不變） */}
         <div className="lg:col-span-6 bg-white rounded-xl border border-gray-200 p-5">
           <h3 className="text-base font-semibold text-gray-900 mb-4 pb-3 border-b border-gray-100">
             獲獎名單（{award.recipients?.length || 0} 人）
@@ -241,13 +241,13 @@ export default function AwardDetailPage() {
           />
         </div>
 
-        {/* 右栏：奖学金核算与确认（渐进式三步） */}
+        {/* 右欄：獎學金核算與確認（漸進式三步） */}
         <div className="lg:col-span-6 bg-white rounded-xl border border-gray-200 p-5">
           <h3 className="text-base font-semibold text-gray-900 mb-4 pb-3 border-b border-gray-100">
             獎學金核算與確認
           </h3>
 
-          {/* 步骤指示器 */}
+          {/* 步驟指示器 */}
           <div className="flex gap-0 mb-5">
             {[
               { n: 1, label: "設置金額" },
@@ -276,7 +276,7 @@ export default function AwardDetailPage() {
             })}
           </div>
 
-          {/* Step 1：设置规则 */}
+          {/* Step 1：設置規則 */}
           {currentStep === 1 && (
             <>
               {calcError && (
@@ -308,10 +308,10 @@ export default function AwardDetailPage() {
             </>
           )}
 
-          {/* Step 2：检视与调整 */}
+          {/* Step 2：檢視與調整 */}
           {currentStep === 2 && calcResult && (
             <>
-              {/* 规则摘要 */}
+              {/* 規則摘要 */}
               <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-blue-50 rounded-lg text-xs text-blue-800">
                 <AlertCircle size={14} className="flex-shrink-0" />
                 <span>
@@ -322,7 +322,7 @@ export default function AwardDetailPage() {
                 </span>
               </div>
 
-              {/* 结果表格 */}
+              {/* 結果表格 */}
               <div className="border border-gray-200 rounded-lg overflow-hidden mb-3 max-h-60 overflow-y-auto">
                 <table className="w-full text-xs">
                   <thead>
@@ -344,13 +344,13 @@ export default function AwardDetailPage() {
                 </table>
               </div>
 
-              {/* 合计 */}
+              {/* 合計 */}
               <div className="flex items-center justify-between text-sm font-semibold text-gray-900 mb-3">
                 <span>合計</span>
                 <span>HK$ {Number(calcResult.total_amount).toLocaleString()}</span>
               </div>
 
-              {/* 操作按钮 */}
+              {/* 操作按鈕 */}
               <div className="flex gap-2">
                 <button
                   onClick={() => { setCurrentStep(1); setCalcError(null); }}
@@ -370,7 +370,7 @@ export default function AwardDetailPage() {
             </>
           )}
 
-          {/* Step 3：已确认 */}
+          {/* Step 3：已確認 */}
           {currentStep === 3 && (
             <div className="text-center py-6">
               <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4">

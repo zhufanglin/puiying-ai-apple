@@ -5,7 +5,7 @@ import { ArrowLeft, TrendingUp, Clock, User, Calendar, DollarSign } from "lucide
 
 const B = "#23675f"; const BG = "#f6f7f9"; const BD = "#d8dee6"; const MU = "#667085";
 
-// 与 finance 页面共享的 mock 数据
+// 與 finance 頁面共享的 mock 數據
 const MOCK_INCOME = [
   { id:1, date:"2026-07-15", project:"中六畢業禮活動經費", amount:1500, paymentMethod:"現金", handler:"陳大明", status:"confirmed" },
   { id:2, date:"2026-07-14", project:"春季運動會贊助款", amount:5000, paymentMethod:"銀行轉賬", handler:"李小華", status:"confirmed" },
@@ -54,7 +54,7 @@ export default function IncomeDetailPage() {
         <ArrowLeft size={16}/> 返回收入列表
       </button>
 
-      {/* 标题 */}
+      {/* 標題 */}
       <div className="bg-white rounded-lg border border-[#d8dee6] p-6" style={{boxShadow:"0 10px 30px rgba(16,24,40,0.08)"}}>
         <div className="flex items-start justify-between">
           <div>
@@ -65,7 +65,7 @@ export default function IncomeDetailPage() {
         </div>
       </div>
 
-      {/* 详细信息 */}
+      {/* 詳細信息 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white rounded-lg border border-[#d8dee6] p-5" style={{boxShadow:"0 10px 30px rgba(16,24,40,0.08)"}}>
           <h3 className="text-[16px] font-bold text-[#1d2939] mb-4">基本信息</h3>

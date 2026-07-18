@@ -74,7 +74,7 @@ export default function BatchGeneratePage() {
   // 解析後的學生清單
   const parsedStudents = useMemo(() => parseStudentInput(studentInput), [studentInput]);
 
-  // 当前选中的模板
+  // 當前選中的模板
   const selectedTemplate = useMemo(
     () => templates.find((t) => t.id === templateId) || null,
     [templateId, templates],
@@ -166,7 +166,7 @@ export default function BatchGeneratePage() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* 左侧：模板预览 */}
+        {/* 左側：模板預覽 */}
         <div className="lg:col-span-4">
           <div className="bg-white rounded-xl border border-gray-200 p-5 sticky top-4">
             <h3 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-2">
@@ -201,7 +201,7 @@ export default function BatchGeneratePage() {
           </div>
         </div>
 
-        {/* 右侧：表单 */}
+        {/* 右側：表單 */}
         <div className="lg:col-span-8">
           <form
             onSubmit={(e) => {

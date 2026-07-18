@@ -18,11 +18,11 @@ interface Props {
 }
 
 /**
- * 资产注销弹窗 — 严格按文档 §3 注销 Tab 流程：
- * 申请注销 → 填写原因 → 提交审批
+ * 資產註銷彈窗 — 嚴格按文檔 §3 註銷 Tab 流程：
+ * 申請註銷 → 填寫原因 → 提交審批
  *
- * 后端: POST /api/v1/apple/assets/{id}/writeoff
- * 流程: 更新 status=written_off → 创建 Approval → 写 AuditLog
+ * 後端: POST /api/v1/apple/assets/{id}/writeoff
+ * 流程: 更新 status=written_off → 創建 Approval → 寫 AuditLog
  */
 export default function WriteoffDialog({ open, onClose, asset, onConfirm }: Props) {
   const [reason, setReason] = useState("");
@@ -50,7 +50,7 @@ export default function WriteoffDialog({ open, onClose, asset, onConfirm }: Prop
       className="bg-white rounded-lg border border-[#d8dee6] w-full"
       style={{ boxShadow: "0 10px 30px rgba(16,24,40,0.08)" }}
     >
-      {/* 标题栏 */}
+      {/* 標題欄 */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[#d8dee6]">
         <h3 className="text-[16px] font-bold text-[#1d2939]">
           申請資產註銷
@@ -61,7 +61,7 @@ export default function WriteoffDialog({ open, onClose, asset, onConfirm }: Prop
       </div>
 
       <div className="p-4 space-y-3">
-        {/* 警告提示 — 注销操作不可逆 */}
+        {/* 警告提示 — 註銷操作不可逆 */}
         <div className="flex items-start gap-2 p-3 rounded-lg border border-[#fedf89] bg-[#fffaeb] text-sm text-[#936a00]">
           <AlertTriangle size={16} className="shrink-0 mt-0.5" />
           <div>
@@ -72,7 +72,7 @@ export default function WriteoffDialog({ open, onClose, asset, onConfirm }: Prop
           </div>
         </div>
 
-        {/* 资产信息只读展示 */}
+        {/* 資產信息只讀展示 */}
         {asset && (
           <div className="bg-[#f8fafc] rounded-lg border border-[#d8dee6] p-3 space-y-1 text-sm">
             <div className="flex justify-between">
@@ -94,7 +94,7 @@ export default function WriteoffDialog({ open, onClose, asset, onConfirm }: Prop
           </div>
         )}
 
-        {/* 注销原因 */}
+        {/* 註銷原因 */}
         <div>
           <label className="block text-[13px] font-bold text-[#344054] mb-1">
             註銷原因 <span className="text-[#b42318]">*</span>
@@ -113,7 +113,7 @@ export default function WriteoffDialog({ open, onClose, asset, onConfirm }: Prop
         </div>
       </div>
 
-      {/* 操作按钮 */}
+      {/* 操作按鈕 */}
       <div className="flex justify-end gap-2 px-4 py-3 border-t border-[#d8dee6]">
         <button
           onClick={close}

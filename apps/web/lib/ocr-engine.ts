@@ -1,11 +1,11 @@
 /**
- * OCR 引擎封装 — Tesseract.js v5 + pdfjs-dist v4
+ * OCR 引擎封裝 — Tesseract.js v5 + pdfjs-dist v4
  *
- * 支持输入:
- * - 图片: JPEG / PNG / BMP / TIFF / WebP → OCR 识别
- * - PDF:  优先提取嵌入文本（机器生成 PDF 准确度更高）→ 文本不足时回退到 OCR
+ * 支持輸入:
+ * - 圖片: JPEG / PNG / BMP / TIFF / WebP → OCR 識別
+ * - PDF:  優先提取嵌入文本（機器生成 PDF 準確度更高）→ 文本不足時回退到 OCR
  *
- * 对应文档: workers/ocr_worker/ — 浏览器端替代实现
+ * 對應文檔: workers/ocr_worker/ — 瀏覽器端替代實現
  */
 
 import Tesseract from "tesseract.js";
@@ -15,7 +15,7 @@ import * as pdfjsLib from "pdfjs-dist";
 // pdf.js Worker + CMap 配置
 // ================================================================
 
-// 使用本地 worker 和 CMap（避免 CDN 网络问题）
+// 使用本地 worker 和 CMap（避免 CDN 網絡問題）
 pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
 const CMAP_URL = "/cmaps/";
@@ -28,13 +28,13 @@ const PDF_OPTIONS = {
 };
 
 // ================================================================
-// 类型
+// 類型
 // ================================================================
 
 export interface OcrOptions {
-  /** 识别语言，默认 chi_tra+chi_sim+eng（繁中+简中+英文） */
+  /** 識別語言，默認 chi_tra+chi_sim+eng（繁中+簡中+英文） */
   language?: string;
-  /** 进度回调 */
+  /** 進度回調 */
   onProgress?: (pct: number) => void;
 }
 
@@ -51,7 +51,7 @@ export interface OcrLine {
 }
 
 // ================================================================
-// Worker 单例
+// Worker 單例
 // ================================================================
 
 let workerInstance: Tesseract.Worker | null = null;
@@ -104,7 +104,7 @@ function isPDF(file: File): boolean {
 }
 
 // ================================================================
-// PDF 嵌入文本提取（优先方案 — 发票等机器生成 PDF 最准确）
+// PDF 嵌入文本提取（優先方案 — 發票等機器生成 PDF 最準確）
 // ================================================================
 
 interface PDFExtractResult {
@@ -114,8 +114,8 @@ interface PDFExtractResult {
 }
 
 /**
- * 从 PDF 中提取嵌入文本
- * 适用于机器生成的发票、报表等（文本以字符/单词形式嵌入）
+ * 從 PDF 中提取嵌入文本
+ * 適用於機器生成的發票、報表等（文本以字符/單詞形式嵌入）
  */
 async function extractPDFText(file: File): Promise<PDFExtractResult> {
   const arrayBuffer = await file.arrayBuffer();
@@ -123,22 +123,22 @@ async function extractPDFText(file: File): Promise<PDFExtractResult> {
 
   const allLines: OcrLine[] = [];
 
-  // 逐页提取文本
+  // 逐頁提取文本
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const textContent = await page.getTextContent();
 
     // pdf.js 返回的 items 包含位置信息和字符
-    // 按 y 坐标分行（同一行的 y 坐标相近）
+    // 按 y 座標分行（同一行的 y 座標相近）
     const rows: Map<number, { text: string; x0: number; y0: number; x1: number; y1: number; count: number }> = new Map();
-    const Y_TOLERANCE = 5; // y 坐标容差
+    const Y_TOLERANCE = 5; // y 座標容差
 
     for (const item of textContent.items) {
       if (!("str" in item)) continue;
       const str = item.str;
       if (!str || !str.trim()) continue;
 
-      // 用 transform 获取坐标
+      // 用 transform 獲取座標
       const tx: number[] = "transform" in item ? (item as any).transform : [1, 0, 0, 1, 0, 0];
       const x = tx[4];
       const y = tx[5];
@@ -156,7 +156,7 @@ async function extractPDFText(file: File): Promise<PDFExtractResult> {
         const row = rows.get(rowKey)!;
         row.text += str;
         row.count++;
-        row.x1 = Math.max(row.x1, x + (str.length * 8)); // 估算宽度
+        row.x1 = Math.max(row.x1, x + (str.length * 8)); // 估算寬度
       } else {
         rows.set(y, {
           text: str,
@@ -169,7 +169,7 @@ async function extractPDFText(file: File): Promise<PDFExtractResult> {
       }
     }
 
-    // 按 y 坐标排序，组装行
+    // 按 y 座標排序，組裝行
     const sortedRows = Array.from(rows.entries())
       .sort(([a], [b]) => a - b);
 
@@ -200,7 +200,7 @@ async function extractPDFText(file: File): Promise<PDFExtractResult> {
 }
 
 // ================================================================
-// PDF → Canvas 渲染（回退方案 — 扫描件/手写件用）
+// PDF → Canvas 渲染（回退方案 — 掃描件/手寫件用）
 // ================================================================
 
 async function renderPDFToCanvas(file: File): Promise<HTMLCanvasElement> {
@@ -208,13 +208,13 @@ async function renderPDFToCanvas(file: File): Promise<HTMLCanvasElement> {
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer, ...PDF_OPTIONS }).promise;
 
   if (pdf.numPages === 0) {
-    throw new Error("PDF 文件没有页面");
+    throw new Error("PDF 文件沒有頁面");
   }
 
   const page = await pdf.getPage(1);
   const viewport = page.getViewport({ scale: 1.0 });
 
-  // 高分辨率渲染：300 DPI 级别 (A4 ≈ 2480 x 3508)
+  // 高分辨率渲染：300 DPI 級別 (A4 ≈ 2480 x 3508)
   const maxDimension = 2500;
   const scale = Math.min(maxDimension / viewport.width, maxDimension / viewport.height, 3.0);
 
@@ -237,7 +237,7 @@ async function renderPDFToCanvas(file: File): Promise<HTMLCanvasElement> {
 }
 
 // ================================================================
-// 图片预处理
+// 圖片預處理
 // ================================================================
 
 async function preprocessImage(file: File): Promise<HTMLCanvasElement> {
@@ -263,7 +263,7 @@ async function preprocessImage(file: File): Promise<HTMLCanvasElement> {
       const ctx = canvas.getContext("2d")!;
       ctx.drawImage(img, 0, 0, width, height);
 
-      // 灰度化提高识别率
+      // 灰度化提高識別率
       const imageData = ctx.getImageData(0, 0, width, height);
       const data = imageData.data;
       for (let i = 0; i < data.length; i += 4) {
@@ -279,7 +279,7 @@ async function preprocessImage(file: File): Promise<HTMLCanvasElement> {
 
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(new Error("图片加载失败，请确认文件格式为 JPEG / PNG / BMP / WebP"));
+      reject(new Error("圖片加載失敗，請確認文件格式為 JPEG / PNG / BMP / WebP"));
     };
 
     img.src = url;
@@ -287,19 +287,19 @@ async function preprocessImage(file: File): Promise<HTMLCanvasElement> {
 }
 
 // ================================================================
-// 主 OCR 函数（混合方案）
+// 主 OCR 函數（混合方案）
 // ================================================================
 
 /**
- * 识别文件中的文本
+ * 識別文件中的文本
  *
- * 策略（按优先级）：
- * 1. PDF → 提取嵌入文本（准确、快速、不受水印干扰）
+ * 策略（按優先級）：
+ * 1. PDF → 提取嵌入文本（準確、快速、不受水印干擾）
  * 2. PDF 嵌入文本不足 → 渲染 Canvas → Tesseract OCR
- * 3. 图片 → 预处理 → Tesseract OCR
+ * 3. 圖片 → 預處理 → Tesseract OCR
  *
- * 默认语言: chi_tra+chi_sim+eng（繁中 + 简中 + 英文）
- * 香港场景使用繁体中文，同时兼容简体和英文
+ * 默認語言: chi_tra+chi_sim+eng（繁中 + 簡中 + 英文）
+ * 香港場景使用繁體中文，同時兼容簡體和英文
  */
 export async function recognizeImage(
   file: File,
@@ -307,12 +307,12 @@ export async function recognizeImage(
 ): Promise<OcrResult> {
   const language = opts.language || "chi_tra+chi_sim+eng";
 
-  // ── PDF: 优先文本提取 ──
+  // ── PDF: 優先文本提取 ──
   if (isPDF(file)) {
     try {
       const extracted = await extractPDFText(file);
 
-      // 如果提取到足够文本（至少 3 行、总共 20 字符以上），直接使用
+      // 如果提取到足夠文本（至少 3 行、總共 20 字符以上），直接使用
       const hasEnoughText =
         extracted.itemCount >= 3 &&
         extracted.text.replace(/\s/g, "").length >= 20;
@@ -320,18 +320,18 @@ export async function recognizeImage(
       if (hasEnoughText) {
         return {
           text: extracted.text,
-          confidence: 98, // 嵌入文本几乎 100% 准确
+          confidence: 98, // 嵌入文本幾乎 100% 準確
           lines: extracted.lines,
         };
       }
 
-      // 嵌入文本不足（可能是扫描件）→ 回退到 OCR
-      console.log("PDF 嵌入文本不足，回退到 OCR 渲染识别...");
+      // 嵌入文本不足（可能是掃描件）→ 回退到 OCR
+      console.log("PDF 嵌入文本不足，回退到 OCR 渲染識別...");
     } catch (e) {
-      console.warn("PDF 文本提取失败，回退到 OCR:", e);
+      console.warn("PDF 文本提取失敗，回退到 OCR:", e);
     }
 
-    // 回退：渲染 PDF 为 Canvas → OCR
+    // 回退：渲染 PDF 為 Canvas → OCR
     const canvas = await renderPDFToCanvas(file);
     const worker = await getWorker(language);
     const result = await worker.recognize(canvas);
@@ -349,7 +349,7 @@ export async function recognizeImage(
     };
   }
 
-  // ── 图片: Canvas 预处理 → OCR ──
+  // ── 圖片: Canvas 預處理 → OCR ──
   const processed = await preprocessImage(file);
   const worker = await getWorker(language);
   const result = await worker.recognize(processed);

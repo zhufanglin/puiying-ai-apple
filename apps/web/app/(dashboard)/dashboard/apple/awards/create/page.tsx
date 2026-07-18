@@ -16,7 +16,7 @@ interface RecipientEntry extends AwardRecipientCreatePayload {
 let keyCounter = 0;
 const newKey = () => `r_${++keyCounter}`;
 
-/** 表单验证结果 */
+/** 表單驗證結果 */
 interface FieldErrors {
   template?: string;
   title?: string;
@@ -59,7 +59,7 @@ export default function CreateAwardPage() {
     setRecipients(recipients.map((r) =>
       r.key === key ? { ...r, [field]: value } : r
     ));
-    // 清除对应字段的错误
+    // 清除對應字段的錯誤
     if (fieldErrors.recipientFields?.[key]?.[field]) {
       const next = { ...fieldErrors };
       if (next.recipientFields?.[key]) {
@@ -74,7 +74,7 @@ export default function CreateAwardPage() {
 
   const removeRecipient = (key: string) => {
     setRecipients(recipients.filter((r) => r.key !== key));
-    // 清除该学生的错误
+    // 清除該學生的錯誤
     if (fieldErrors.recipientFields?.[key]) {
       const next = { ...fieldErrors };
       delete next.recipientFields![key];
@@ -82,24 +82,24 @@ export default function CreateAwardPage() {
     }
   };
 
-  /** 验证表单，返回是否有错误 */
+  /** 驗證表單，返回是否有錯誤 */
   const validate = (): boolean => {
     const errors: FieldErrors = {};
     let hasError = false;
 
-    // 奖状模板
+    // 獎狀模板
     if (!templateId) {
       errors.template = "請選擇獎狀範本";
       hasError = true;
     }
 
-    // 奖状标题
+    // 獎狀標題
     if (!title.trim()) {
       errors.title = "請填寫獎狀標題";
       hasError = true;
     }
 
-    // 获奖学生
+    // 獲獎學生
     if (recipients.length === 0) {
       errors.recipients = "請至少添加一名獲獎學生";
       hasError = true;
@@ -170,7 +170,7 @@ export default function CreateAwardPage() {
     }
   };
 
-  /** 输入框的错误样式 */
+  /** 輸入框的錯誤樣式 */
   const inputErr = (has: boolean) =>
     has ? "border border-red-400 focus:border-red-500 bg-red-50" : "border border-gray-200 focus:border-primary-400";
 

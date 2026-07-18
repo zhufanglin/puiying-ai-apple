@@ -1,8 +1,8 @@
-/** 解析中文数字为阿拉伯数字 */
+/** 解析中文數字為阿拉伯數字 */
 const CHINESE_NUM_MAP: Record<string, number> = {
   "零": 0, "一": 1, "二": 2, "三": 3, "四": 4,
   "五": 5, "六": 6, "七": 7, "八": 8, "九": 9,
-  "十": 10, "百": 100, "千": 1000, "万": 10000,
+  "十": 10, "百": 100, "千": 1000, "萬": 10000,
 };
 
 export function parseChineseNumber(text: string): number {

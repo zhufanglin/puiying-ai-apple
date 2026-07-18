@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "培英中学 AI 数智化平台",
-  description: "Apple 子系统 — 奖状奖学金 / 财务收支 / 资产盘点 / 学生事务",
+  title: "培英中學 AI 數智化平台",
+  description: "Apple 子系統 — 獎狀獎學金 / 財務收支 / 資產盤點 / 學生事務",
 };
 
 export default function RootLayout({

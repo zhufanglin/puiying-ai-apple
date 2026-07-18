@@ -9,7 +9,7 @@ import { parseReceipt, type ReceiptResult } from "@/lib/receipt-parser";
 const B = "#23675f";
 
 // ================================================================
-// 类型（严格按 receipt_extract_zh_hk.md 字段定义）
+// 類型（嚴格按 receipt_extract_zh_hk.md 字段定義）
 // ================================================================
 
 interface OCRResult {
@@ -21,7 +21,7 @@ interface OCRResult {
 interface Props { open: boolean; onClose: () => void; onConfirm: (data: OCRResult) => void; }
 
 // ================================================================
-// 组件
+// 組件
 // ================================================================
 
 export default function UploadReceiptDialog({ open, onClose, onConfirm }: Props) {
@@ -35,7 +35,7 @@ export default function UploadReceiptDialog({ open, onClose, onConfirm }: Props)
   if (!open) return null;
 
   /**
-   * 处理文件上传 → 真实 OCR 识别 → 字段解析
+   * 處理文件上傳 → 真實 OCR 識別 → 字段解析
    */
   const handleUpload = async (file: File) => {
     setUploading(true);
@@ -43,16 +43,16 @@ export default function UploadReceiptDialog({ open, onClose, onConfirm }: Props)
     setProgress(0);
 
     try {
-      // 1. OCR 识别
+      // 1. OCR 識別
       const ocrResult = await recognizeImage(file, {
         language: "chi_sim+eng",
         onProgress: (pct) => setProgress(Math.round(pct * 100)),
       });
 
-      // 2. 解析收据字段（严格按 receipt_extract_zh_hk.md 格式）
+      // 2. 解析收據字段（嚴格按 receipt_extract_zh_hk.md 格式）
       const parsed: ReceiptResult = parseReceipt(ocrResult);
 
-      // 3. 转为组件使用的格式
+      // 3. 轉為組件使用的格式
       const result: OCRResult = {
         amount: parsed.fields.amount,
         currency: parsed.fields.currency,
@@ -91,7 +91,7 @@ export default function UploadReceiptDialog({ open, onClose, onConfirm }: Props)
     setEdit({ ...edit, [f]: v });
   };
 
-  // ── 样式工具 ──
+  // ── 樣式工具 ──
   const confClass = (c: string) =>
     c === "high" ? "text-[#027a48]" : c === "medium" ? "text-[#936a00]" : "text-[#b42318]";
   const confLabel = (c: string) =>
@@ -109,7 +109,7 @@ export default function UploadReceiptDialog({ open, onClose, onConfirm }: Props)
       className="bg-white rounded-lg border border-[#d8dee6] w-full max-h-[calc(100vh-96px)] overflow-auto"
       style={{ boxShadow: "0 10px 30px rgba(16,24,40,0.08)" }}
     >
-      {/* 标题栏 */}
+      {/* 標題欄 */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[#d8dee6]">
         <h3 className="text-[16px] font-bold text-[#1d2939]">上傳收據</h3>
         <button onClick={close} className="p-1 rounded hover:bg-[#f1f5f8] text-[#667085]">
@@ -118,7 +118,7 @@ export default function UploadReceiptDialog({ open, onClose, onConfirm }: Props)
       </div>
 
       <div className="p-4">
-        {/* ═══ 步骤1：上传 ═══ */}
+        {/* ═══ 步驟1：上傳 ═══ */}
         {step === "upload" && (
           <div className="space-y-3">
             <p className="text-sm text-[#667085]">
@@ -133,7 +133,7 @@ export default function UploadReceiptDialog({ open, onClose, onConfirm }: Props)
               label="拖拽收據圖片到此處，或點擊上傳"
             />
 
-            {/* OCR 进行中 */}
+            {/* OCR 進行中 */}
             {uploading && (
               <div className="space-y-2">
                 <div className="flex items-center justify-center gap-2 py-3 text-sm font-bold" style={{ color: B }}>
@@ -141,7 +141,7 @@ export default function UploadReceiptDialog({ open, onClose, onConfirm }: Props)
                   AI OCR 識別中...
                   {progress > 0 && <span className="text-xs font-normal">{progress}%</span>}
                 </div>
-                {/* 进度条 */}
+                {/* 進度條 */}
                 {progress > 0 && (
                   <div className="w-full bg-[#f1f5f8] rounded-full h-1.5 overflow-hidden">
                     <div
@@ -153,7 +153,7 @@ export default function UploadReceiptDialog({ open, onClose, onConfirm }: Props)
               </div>
             )}
 
-            {/* 错误提示 */}
+            {/* 錯誤提示 */}
             {error && (
               <div className="flex items-start gap-2 p-3 rounded-lg border border-[#fecaca] bg-[#fef2f2] text-sm text-[#b42318]">
                 <AlertTriangle size={16} className="shrink-0 mt-0.5" />
@@ -172,7 +172,7 @@ export default function UploadReceiptDialog({ open, onClose, onConfirm }: Props)
           </div>
         )}
 
-        {/* ═══ 步骤2：确认 ═══ */}
+        {/* ═══ 步驟2：確認 ═══ */}
         {step === "review" && ocr && edit && (
           <div className="space-y-3">
             {/* 信心提示 */}
@@ -209,7 +209,7 @@ export default function UploadReceiptDialog({ open, onClose, onConfirm }: Props)
               </div>
             )}
 
-            {/* 可编辑字段 */}
+            {/* 可編輯字段 */}
             <div className="space-y-3">
               {/* 日期 */}
               <div>
@@ -224,7 +224,7 @@ export default function UploadReceiptDialog({ open, onClose, onConfirm }: Props)
                 />
               </div>
 
-              {/* 金额 + 付款人 */}
+              {/* 金額 + 付款人 */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[13px] font-bold text-[#344054] mb-1">
@@ -269,7 +269,7 @@ export default function UploadReceiptDialog({ open, onClose, onConfirm }: Props)
                 />
               </div>
 
-              {/* OCR 原始文本（可折叠） */}
+              {/* OCR 原始文本（可摺疊） */}
               <details className="text-xs text-[#667085]">
                 <summary className="cursor-pointer hover:text-[#1d2939] font-bold">
                   查看 OCR 原始識別文本
@@ -280,7 +280,7 @@ export default function UploadReceiptDialog({ open, onClose, onConfirm }: Props)
               </details>
             </div>
 
-            {/* 操作按钮 */}
+            {/* 操作按鈕 */}
             <div className="flex justify-end gap-2 pt-2 border-t border-[#d8dee6]">
               <button
                 onClick={() => { setStep("upload"); setError(null); }}

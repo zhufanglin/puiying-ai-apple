@@ -1,9 +1,9 @@
 /**
- * 收据 OCR 文本解析器 — 对应 receipt_extract_zh_hk.md
+ * 收據 OCR 文本解析器 — 對應 receipt_extract_zh_hk.md
  *
- * 多策略提取: 标签匹配 → 逐行扫描 → 智能推断
+ * 多策略提取: 標籤匹配 → 逐行掃描 → 智能推斷
  *
- * 输出: { fields: {amount,currency,date,payer,purpose}, confidence, warnings, raw_text }
+ * 輸出: { fields: {amount,currency,date,payer,purpose}, confidence, warnings, raw_text }
  */
 
 import type { OcrResult } from "./ocr-engine";
@@ -24,18 +24,18 @@ export interface ReceiptResult {
 }
 
 // ================================================================
-// 标签模式
+// 標籤模式
 // ================================================================
 
 const LABEL_PATTERNS = {
   amount: [/HK\$\s*([\d,]+\.?\d*)/i, /HKD?\s*\$?\s*([\d,]+\.?\d*)/i, /港幣\s*\$?\s*([\d,]+\.?\d*)/, /金額[：:\s]*\$?\s*([\d,]+\.?\d*)/, /總額[：:\s]*\$?\s*([\d,]+\.?\d*)/, /合計[：:\s]*\$?\s*([\d,]+\.?\d*)/, /Total[：:\s]*\$?\s*([\d,]+\.?\d*)/i],
   date: [/(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/, /(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?!\d)/, /(\d{1,2})\/(\d{1,2})\/(\d{4})/, /日期[：:\s]*(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/, /Date[：:\s]*(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{4})/i],
-  payer: [/付款人[：:\s]*(.+)/, /經手人[：:\s]*(.+)/, /繳款人[：:\s]*(.+)/, /繳費人[：:\s]*(.+)/, /Payer[：:\s]*(.+)/i, /From[：:\s]*(.+)/i, /客戶[：:\s]*(.+)/],
+  payer: [/付款人[：:\s]*(.+)/, /經手人[：:\s]*(.+)/, /繳款人[：:\s]*(.+)/, /繳費人[：:\s]*(.+)/, /Payer[：:\s]*(.+)/i, /From[：:\s]*(.+)/i, /客户[：:\s]*(.+)/],
   purpose: [/用途[：:\s]*(.+)/, /項目[：:\s]*(.+)/, /事項[：:\s]*(.+)/, /Purpose[：:\s]*(.+)/i, /For[：:\s]*(.+)/i, /備註[：:\s]*(.+)/, /Remarks?[：:\s]*(.+)/i],
 };
 
 // ================================================================
-// 逐行扫描工具
+// 逐行掃描工具
 // ================================================================
 
 function extractDateFromLine(line: string): string | null {
@@ -53,17 +53,17 @@ function extractDateFromLine(line: string): string | null {
 }
 
 function extractAmountFromLine(line: string): number | null {
-  // 优先匹配带货币的
+  // 優先匹配帶貨幣的
   let m = line.match(/HKD?\s*\$?\s*([\d,]+\.?\d*)/i);
   if (m) return parseFloat(m[1]!.replace(/,/g, ""));
   m = line.match(/HK\$\s*([\d,]+\.?\d*)/i);
   if (m) return parseFloat(m[1]!.replace(/,/g, ""));
   m = line.match(/港幣\s*\$?\s*([\d,]+\.?\d*)/);
   if (m) return parseFloat(m[1]!.replace(/,/g, ""));
-  // $金额
+  // $金額
   m = line.match(/\$\s*([\d,]+\.\d{2})/);
   if (m) return parseFloat(m[1]!.replace(/,/g, ""));
-  // 纯数字 ≥100
+  // 純數字 ≥100
   m = line.match(/^(\d{3,})$/);
   if (m) return parseInt(m[1]!);
   return null;
@@ -84,14 +84,14 @@ function extractLabeled(line: string, patterns: RegExp[]): string | null {
 }
 
 // ================================================================
-// 主解析函数
+// 主解析函數
 // ================================================================
 
 export function parseReceipt(ocrResult: OcrResult): ReceiptResult {
   const rawText = ocrResult.text;
   const allLines = ocrResult.lines.map((l) => l.text).filter((l) => !isNoise(l));
 
-  // ── 策略1: 标签匹配 ──
+  // ── 策略1: 標籤匹配 ──
   let payer = "";
   let purpose = "";
   for (const line of allLines) {
@@ -101,7 +101,7 @@ export function parseReceipt(ocrResult: OcrResult): ReceiptResult {
     if (pu && !purpose) purpose = pu;
   }
 
-  // ── 策略2: 逐行扫描日期/金额 ──
+  // ── 策略2: 逐行掃描日期/金額 ──
   let date = "";
   let amount: number | null = null;
   let amountSource = "";
@@ -124,20 +124,20 @@ export function parseReceipt(ocrResult: OcrResult): ReceiptResult {
     }
   }
 
-  // ── 策略3: 智能推断剩余字段 ──
+  // ── 策略3: 智能推斷剩餘字段 ──
   for (const line of allLines) {
     const t = line.trim();
     if (!t || extractDateFromLine(t) || extractAmountFromLine(t) !== null || isNoise(t)) continue;
-    // 标签值已处理，跳过标签行
+    // 標籤值已處理，跳過標籤行
     if (LABEL_PATTERNS.payer.some((r) => r.test(t)) || LABEL_PATTERNS.purpose.some((r) => r.test(t))) continue;
-    // 中等长度的文本行 → 可能是用途或付款人
+    // 中等長度的文本行 → 可能是用途或付款人
     if (t.length >= 3 && t.length <= 200) {
       if (!purpose) purpose = t;
       else if (!payer) payer = t;
     }
   }
 
-  // ── 组装 ──
+  // ── 組裝 ──
   const fields: ReceiptFields = {
     amount,
     currency: "HKD",

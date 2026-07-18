@@ -9,7 +9,7 @@ import { parseInvoice, type InvoiceResult } from "@/lib/invoice-parser";
 const B = "#23675f";
 
 // ================================================================
-// 类型
+// 類型
 // ================================================================
 
 interface Props {
@@ -22,7 +22,7 @@ interface Props {
 }
 
 // ================================================================
-// 组件
+// 組件
 // ================================================================
 
 export default function UploadAssetDialog({ open, onClose, onConfirm }: Props) {
@@ -39,7 +39,7 @@ export default function UploadAssetDialog({ open, onClose, onConfirm }: Props) {
   if (!open) return null;
 
   /**
-   * 处理发票上传 → 真实 OCR 识别 → 字段解析 → 自动填充表单
+   * 處理發票上傳 → 真實 OCR 識別 → 字段解析 → 自動填充表單
    */
   const handleUpload = async (file: File) => {
     setUploading(true);
@@ -47,18 +47,18 @@ export default function UploadAssetDialog({ open, onClose, onConfirm }: Props) {
     setProgress(0);
 
     try {
-      // 1. OCR 识别
+      // 1. OCR 識別
       const ocrResult = await recognizeImage(file, {
         language: "chi_sim+eng",
         onProgress: (pct) => setProgress(Math.round(pct * 100)),
       });
 
-      // 2. 解析发票字段
+      // 2. 解析發票字段
       const parsed: InvoiceResult = parseInvoice(ocrResult);
 
       setOcr(parsed);
 
-      // 3. 自动填充表单
+      // 3. 自動填充表單
       setForm({
         assetNo: "",
         name: parsed.assetName,
@@ -97,7 +97,7 @@ export default function UploadAssetDialog({ open, onClose, onConfirm }: Props) {
     close();
   };
 
-  // ── 样式工具 ──
+  // ── 樣式工具 ──
   const confClass = (c: string) =>
     c === "high" ? "text-[#027a48]" : c === "medium" ? "text-[#936a00]" : "text-[#b42318]";
   const confLabel = (c: string) =>
@@ -115,7 +115,7 @@ export default function UploadAssetDialog({ open, onClose, onConfirm }: Props) {
       className="bg-white rounded-lg border border-[#d8dee6] w-full max-h-[calc(100vh-96px)] overflow-auto"
       style={{ boxShadow: "0 10px 30px rgba(16,24,40,0.08)" }}
     >
-      {/* 标题栏 */}
+      {/* 標題欄 */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[#d8dee6]">
         <h3 className="text-[16px] font-bold text-[#1d2939]">上傳發票登記資產</h3>
         <button onClick={close} className="p-1 rounded hover:bg-[#f1f5f8] text-[#667085]">
@@ -124,7 +124,7 @@ export default function UploadAssetDialog({ open, onClose, onConfirm }: Props) {
       </div>
 
       <div className="p-4">
-        {/* ═══ 步骤1：上传 ═══ */}
+        {/* ═══ 步驟1：上傳 ═══ */}
         {step === "upload" && (
           <div className="space-y-3">
             <p className="text-sm text-[#667085]">
@@ -139,7 +139,7 @@ export default function UploadAssetDialog({ open, onClose, onConfirm }: Props) {
               label="拖拽發票圖片到此處，或點擊上傳"
             />
 
-            {/* OCR 进行中 */}
+            {/* OCR 進行中 */}
             {uploading && (
               <div className="space-y-2">
                 <div className="flex items-center justify-center gap-2 py-3 text-sm font-bold" style={{ color: B }}>
@@ -158,7 +158,7 @@ export default function UploadAssetDialog({ open, onClose, onConfirm }: Props) {
               </div>
             )}
 
-            {/* 错误提示 */}
+            {/* 錯誤提示 */}
             {error && (
               <div className="flex items-start gap-2 p-3 rounded-lg border border-[#fecaca] bg-[#fef2f2] text-sm text-[#b42318]">
                 <AlertTriangle size={16} className="shrink-0 mt-0.5" />
@@ -174,7 +174,7 @@ export default function UploadAssetDialog({ open, onClose, onConfirm }: Props) {
           </div>
         )}
 
-        {/* ═══ 步骤2：确认 ═══ */}
+        {/* ═══ 步驟2：確認 ═══ */}
         {step === "review" && ocr && (
           <div className="space-y-3">
             {/* 信心提示 */}
@@ -211,7 +211,7 @@ export default function UploadAssetDialog({ open, onClose, onConfirm }: Props) {
               </div>
             )}
 
-            {/* 表单字段 */}
+            {/* 表單字段 */}
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -235,7 +235,7 @@ export default function UploadAssetDialog({ open, onClose, onConfirm }: Props) {
                     className="w-full text-sm border border-[#d8dee6] rounded-lg px-[9px] py-[8px] focus:outline-none focus:border-[#23675f]"
                   >
                     <option value="">請選擇</option>
-                    {["IT設備", "家具", "電器", "辦公設備", "其他"].map((o) => (
+                    {["IT設備", "傢俱", "電器", "辦公設備", "其他"].map((o) => (
                       <option key={o} value={o}>{o}</option>
                     ))}
                   </select>
@@ -308,7 +308,7 @@ export default function UploadAssetDialog({ open, onClose, onConfirm }: Props) {
               </details>
             </div>
 
-            {/* 操作按钮 */}
+            {/* 操作按鈕 */}
             <div className="flex justify-end gap-2 pt-2 border-t border-[#d8dee6]">
               <button
                 onClick={() => { setStep("upload"); setError(null); }}

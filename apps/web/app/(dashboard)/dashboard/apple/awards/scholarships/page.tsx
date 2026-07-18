@@ -213,7 +213,7 @@ export default function ScholarshipsListPage() {
             loading={loading}
           />
 
-          {/* 批量导出浮动条 */}
+          {/* 批量導出浮動條 */}
           {selectedIds.size > 0 && (
             <div className="sticky bottom-4 mt-4 flex items-center justify-between bg-primary-600 text-white px-5 py-3 rounded-xl shadow-lg">
               <span className="text-sm font-medium">

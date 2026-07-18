@@ -17,27 +17,27 @@ import {
 const menuItems = [
   {
     href: "/dashboard/apple",
-    label: "Apple 总览",
+    label: "Apple 總覽",
     icon: LayoutDashboard,
   },
   {
     href: "/dashboard/apple/awards",
-    label: "奖状奖学金",
+    label: "獎狀獎學金",
     icon: Award,
   },
   {
     href: "/dashboard/apple/finance",
-    label: "财务收支",
+    label: "財務收支",
     icon: Receipt,
   },
   {
     href: "/dashboard/apple/assets",
-    label: "资产盘点",
+    label: "資產盤點",
     icon: Package,
   },
   {
     href: "/dashboard/apple/students",
-    label: "学生事务",
+    label: "學生事務",
     icon: GraduationCap,
   },
 ];
@@ -52,7 +52,7 @@ export default function DashboardLayout({
 
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* ---- 侧边栏 ---- */}
+      {/* ---- 側邊欄 ---- */}
       <aside
         className={`flex flex-col bg-white border-r border-gray-200 transition-all duration-200 ${
           collapsed ? "w-16" : "w-60"
@@ -62,7 +62,7 @@ export default function DashboardLayout({
         <div className="flex items-center h-14 px-4 border-b border-gray-100">
           {!collapsed && (
             <span className="text-sm font-bold text-primary-700 truncate">
-              培英 AI 数智平台
+              培英 AI 數智平台
             </span>
           )}
           <button
@@ -73,7 +73,7 @@ export default function DashboardLayout({
           </button>
         </div>
 
-        {/* 菜单 */}
+        {/* 菜單 */}
         <nav className="flex-1 py-2 overflow-y-auto">
           {menuItems.map((item) => {
             const isActive = pathname === item.href;
@@ -103,12 +103,12 @@ export default function DashboardLayout({
         </div>
       </aside>
 
-      {/* ---- 主内容区 ---- */}
+      {/* ---- 主內容區 ---- */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        {/* 顶栏 */}
+        {/* 頂欄 */}
         <header className="flex items-center h-14 px-6 bg-white border-b border-gray-200">
           <h1 className="text-base font-semibold text-gray-800">
-            培英中学 AI 数智化平台 · Apple 子系统
+            培英中學 AI 數智化平台 · Apple 子系統
           </h1>
           <div className="ml-auto flex items-center gap-3">
             <span className="text-sm text-gray-400">演示版 v0.1</span>
@@ -118,7 +118,7 @@ export default function DashboardLayout({
           </div>
         </header>
 
-        {/* 页面内容 */}
+        {/* 頁面內容 */}
         <div className="flex-1 overflow-y-auto p-6">{children}</div>
       </main>
     </div>

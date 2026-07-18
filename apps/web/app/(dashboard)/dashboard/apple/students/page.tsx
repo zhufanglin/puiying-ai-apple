@@ -18,10 +18,10 @@ interface StudentRecord {
 }
 
 const STATUS_MAP: Record<string, { label: string; className: string }> = {
-  active: { label: "在读", className: "bg-green-50 text-green-700" },
-  graduated: { label: "已毕业", className: "bg-blue-50 text-blue-700" },
-  transferred: { label: "已转学", className: "bg-orange-50 text-orange-700" },
-  suspended: { label: "休学", className: "bg-gray-50 text-gray-700" },
+  active: { label: "在讀", className: "bg-green-50 text-green-700" },
+  graduated: { label: "已畢業", className: "bg-blue-50 text-blue-700" },
+  transferred: { label: "已轉學", className: "bg-orange-50 text-orange-700" },
+  suspended: { label: "休學", className: "bg-gray-50 text-gray-700" },
 };
 
 export default function StudentsPage() {
@@ -41,7 +41,7 @@ export default function StudentsPage() {
         setStudents(Array.isArray(json.data) ? json.data : json.data.items || []);
       }
     } catch (err) {
-      console.error("加载学生列表失败", err);
+      console.error("加載學生列表失敗", err);
     } finally {
       setLoading(false);
     }
@@ -61,11 +61,11 @@ export default function StudentsPage() {
     : students;
 
   const columns: Column<StudentRecord>[] = [
-    { key: "studentNo", header: "学号", width: "120px" },
+    { key: "studentNo", header: "學號", width: "120px" },
     { key: "nameZh", header: "姓名", width: "100px" },
     {
       key: "className",
-      header: "班级",
+      header: "班級",
       width: "100px",
       render: (row) => (
         <span className="text-sm font-medium text-gray-900">{row.className}</span>
@@ -73,7 +73,7 @@ export default function StudentsPage() {
     },
     {
       key: "status",
-      header: "状态",
+      header: "狀態",
       width: "90px",
       render: (row) => {
         const s = STATUS_MAP[row.status] || { label: row.status, className: "bg-gray-50 text-gray-600" };
@@ -86,19 +86,19 @@ export default function StudentsPage() {
     },
     {
       key: "parentName",
-      header: "家长",
+      header: "家長",
       width: "100px",
       render: (row) => row.parentName || "-",
     },
     {
       key: "parentPhone",
-      header: "联系电话",
+      header: "聯繫電話",
       width: "130px",
       render: (row) => row.parentPhone || "-",
     },
     {
       key: "admissionDate",
-      header: "入学日期",
+      header: "入學日期",
       width: "110px",
       render: (row) => row.admissionDate || "-",
     },
@@ -107,11 +107,11 @@ export default function StudentsPage() {
   return (
     <div>
       <PageHeader
-        title="学生事务"
-        subtitle="学生档案管理"
+        title="學生事務"
+        subtitle="學生檔案管理"
       />
 
-      {/* 搜索栏 */}
+      {/* 搜索欄 */}
       <div className="flex items-center gap-4 mb-4">
         <div className="relative flex-1 max-w-xs">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -119,12 +119,12 @@ export default function StudentsPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="搜索姓名/学号/班级..."
+            placeholder="搜索姓名/學號/班級..."
             className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
         </div>
         <span className="text-sm text-gray-500">
-          {loading ? "加载中..." : `共 ${filtered.length} 名学生`}
+          {loading ? "加載中..." : `共 ${filtered.length} 名學生`}
         </span>
       </div>
 
@@ -133,7 +133,7 @@ export default function StudentsPage() {
         data={filtered}
         total={filtered.length}
         loading={loading}
-        emptyText="暂未导入学生数据，请通过后台上传学生信息"
+        emptyText="暫未導入學生數據，請通過後台上傳學生信息"
       />
     </div>
   );

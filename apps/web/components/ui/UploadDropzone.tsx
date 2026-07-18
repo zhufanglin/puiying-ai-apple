@@ -16,7 +16,7 @@ export default function UploadDropzone({
   maxSizeMB = 10,
   onUpload,
   uploading,
-  label = "拖拽文件到此处，或点击上传",
+  label = "拖拽文件到此處，或點擊上傳",
 }: UploadDropzoneProps) {
   const [dragOver, setDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -28,7 +28,7 @@ export default function UploadDropzone({
       const file = e.dataTransfer.files[0];
       if (file) {
         if (file.size > maxSizeMB * 1024 * 1024) {
-          alert(`文件大小超过 ${maxSizeMB}MB 限制`);
+          alert(`文件大小超過 ${maxSizeMB}MB 限制`);
           return;
         }
         setSelectedFile(file);
@@ -65,7 +65,7 @@ export default function UploadDropzone({
         </p>
       </div>
 
-      {/* 已选文件 */}
+      {/* 已選文件 */}
       {selectedFile && (
         <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
           <File size={16} className="text-gray-400" />
@@ -81,9 +81,9 @@ export default function UploadDropzone({
             disabled={uploading}
             className="flex items-center gap-1 px-3 py-1.5 text-sm text-white bg-primary-500 rounded-lg hover:bg-primary-600 disabled:opacity-50"
           >
-            {uploading ? "上传中..." : (
+            {uploading ? "上傳中..." : (
               <>
-                <CheckCircle size={14} /> 确认上传
+                <CheckCircle size={14} /> 確認上傳
               </>
             )}
           </button>

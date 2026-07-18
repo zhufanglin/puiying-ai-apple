@@ -26,7 +26,7 @@ export default function LoginPage() {
       );
       const json = await res.json();
       if (json.code !== 0) {
-        setError(json.message || "登录失败");
+        setError(json.message || "登錄失敗");
         setLoading(false);
         return;
       }
@@ -34,7 +34,7 @@ export default function LoginPage() {
       localStorage.setItem("token", json.data.access_token);
       router.push("/dashboard/apple");
     } catch {
-      setError("网络错误，请检查后端服务是否启动");
+      setError("網絡錯誤，請檢查後端服務是否啓動");
       setLoading(false);
     }
   };
@@ -50,30 +50,30 @@ export default function LoginPage() {
                 d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
             </svg>
           </div>
-          <h1 className="text-xl font-bold text-slate-800">培英中学 AI 数智化平台</h1>
-          <p className="text-sm text-slate-500 mt-1">Apple 子系统</p>
+          <h1 className="text-xl font-bold text-slate-800">培英中學 AI 數智化平台</h1>
+          <p className="text-sm text-slate-500 mt-1">Apple 子系統</p>
         </div>
 
         {/* Login Form */}
         <form onSubmit={handleLogin} className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">用户名</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">用戶名</label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="请输入用户名"
+              placeholder="請輸入用戶名"
               required
               className="w-full px-3 py-2.5 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">密码</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">密碼</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="请输入密码"
+              placeholder="請輸入密碼"
               required
               className="w-full px-3 py-2.5 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
             />
@@ -90,11 +90,11 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition disabled:opacity-50"
           >
-            {loading ? "登录中..." : "登 录"}
+            {loading ? "登錄中..." : "登 錄"}
           </button>
 
           <p className="text-xs text-slate-400 text-center">
-            演示账号: admin / admin123
+            演示賬號: admin / admin123
           </p>
         </form>
       </div>

@@ -9,8 +9,8 @@ interface EmptyStateProps {
 
 export default function EmptyState({
   icon: Icon = Inbox,
-  title = "暂无数据",
-  description = "当前没有可显示的内容",
+  title = "暫無數據",
+  description = "當前沒有可顯示的內容",
   action,
 }: EmptyStateProps) {
   return (

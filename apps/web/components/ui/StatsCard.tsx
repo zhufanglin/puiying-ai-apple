@@ -25,7 +25,7 @@ export default function StatsCard({
           <p className="text-2xl font-bold mt-1 text-gray-900">{value}</p>
           {trend && (
             <p className={`text-xs mt-2 ${trendUp ? "text-green-600" : "text-red-500"}`}>
-              {trendUp ? "↑" : "↓"} {trend} 较上月
+              {trendUp ? "↑" : "↓"} {trend} 較上月
             </p>
           )}
         </div>

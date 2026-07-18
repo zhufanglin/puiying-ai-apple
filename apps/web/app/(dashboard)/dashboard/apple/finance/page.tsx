@@ -61,12 +61,12 @@ const MOCK_EXPENSE: ExpenseRecord[] = [
 const MOCK_QUOTATION: QuotationRecord[] = [
   { id:1, projectName:"校慶紀念品採購", vendor:"精美禮品公司", amount:15000, isLowest:true, isSelected:true, remark:"品質優，交貨快" },
   { id:2, projectName:"校慶紀念品採購", vendor:"佳好工藝品廠", amount:16800, isLowest:false, isSelected:false, remark:"款式較多" },
-  { id:3, projectName:"校慶紀念品採購", vendor:"永恒紀念品有限公司", amount:18200, isLowest:false, isSelected:false, remark:"有現貨" },
+  { id:3, projectName:"校慶紀念品採購", vendor:"永恆紀念品有限公司", amount:18200, isLowest:false, isSelected:false, remark:"有現貨" },
   { id:4, projectName:"教室空調採購", vendor:"格力電器專賣店", amount:48000, isLowest:true, isSelected:true, remark:"含安裝及3年保養" },
   { id:5, projectName:"教室空調採購", vendor:"美的電器代理", amount:52000, isLowest:false, isSelected:false, remark:"含5年保養" },
   { id:6, projectName:"校園綠化工程", vendor:"綠意園林設計", amount:35000, isLowest:false, isSelected:true, remark:"口碑好、設計方案優" },
   { id:7, projectName:"校園綠化工程", vendor:"春暉園藝公司", amount:28000, isLowest:true, isSelected:false, remark:"價格最低但經驗不足" },
-  { id:8, projectName:"圖書館書架定製", vendor:"恒達家具廠", amount:22000, isLowest:true, isSelected:false, remark:"" },
+  { id:8, projectName:"圖書館書架定製", vendor:"恆達傢俱廠", amount:22000, isLowest:true, isSelected:false, remark:"" },
 ];
 
 const INCOME_STATS = {
@@ -241,10 +241,10 @@ export default function FinancePage() {
           <div className="flex items-start gap-2 p-3 rounded-lg border text-sm" style={{background:"#eef4ff", borderColor:"#bfdbfe", color:"#155eef"}}>
             <Search size={16} className="mt-0.5 shrink-0"/>
             <div>
-              <p className="font-bold">自動分析說明</p>
+              <p className="font-bold">自動分析説明</p>
               <ul className="mt-1 space-y-0.5 text-xs opacity-80">
                 <li>🟡 <strong>黃色高亮</strong>：該項目僅有一家報價，建議增加比價</li>
-                <li>🔴 <strong>紅色高亮</strong>：未採納最低報價，需在備註中說明原因</li>
+                <li>🔴 <strong>紅色高亮</strong>：未採納最低報價，需在備註中説明原因</li>
               </ul>
             </div>
           </div>

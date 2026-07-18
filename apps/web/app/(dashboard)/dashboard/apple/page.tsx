@@ -10,23 +10,23 @@ import {
 } from "lucide-react";
 
 const stats = [
-  { label: "奖状模板", value: 12, icon: Award, color: "text-blue-600", bg: "bg-blue-50" },
+  { label: "獎狀模板", value: 12, icon: Award, color: "text-blue-600", bg: "bg-blue-50" },
   { label: "本月收支", value: "¥156,800", icon: Receipt, color: "text-green-600", bg: "bg-green-50" },
-  { label: "资产总数", value: 2340, icon: Package, color: "text-purple-600", bg: "bg-purple-50" },
-  { label: "在校学生", value: 1856, icon: GraduationCap, color: "text-orange-600", bg: "bg-orange-50" },
+  { label: "資產總數", value: 2340, icon: Package, color: "text-purple-600", bg: "bg-purple-50" },
+  { label: "在校學生", value: 1856, icon: GraduationCap, color: "text-orange-600", bg: "bg-orange-50" },
 ];
 
 const logs = [
-  { action: "审批通过", target: "三好学生奖状 #A023", time: "2 分钟前", status: "success" },
-  { action: "提交审批", target: "优秀班干部奖状 #A024", time: "15 分钟前", status: "pending" },
-  { action: "上传票据", target: "春季运动会采购发票", time: "1 小时前", status: "info" },
-  { action: "资产报废", target: "投影仪 PM-2019-032", time: "2 小时前", status: "warning" },
+  { action: "審批通過", target: "三好學生獎狀 #A023", time: "2 分鐘前", status: "success" },
+  { action: "提交審批", target: "優秀班幹部獎狀 #A024", time: "15 分鐘前", status: "pending" },
+  { action: "上傳票據", target: "春季運動會採購發票", time: "1 小時前", status: "info" },
+  { action: "資產報廢", target: "投影儀 PM-2019-032", time: "2 小時前", status: "warning" },
 ];
 
 export default function AppleOverviewPage() {
   return (
     <div className="space-y-6">
-      {/* 统计卡片 */}
+      {/* 統計卡片 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((s) => (
           <div key={s.label} className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-sm transition-shadow">
@@ -43,17 +43,17 @@ export default function AppleOverviewPage() {
         ))}
       </div>
 
-      {/* 快捷入口 + 最近动态 */}
+      {/* 快捷入口 + 最近動態 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* 快捷入口 */}
         <div className="lg:col-span-1 bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="text-base font-semibold text-gray-800 mb-4">快捷操作</h2>
           <div className="space-y-2">
             {[
-              { label: "生成奖状", href: "/dashboard/apple/awards/generate", icon: Award },
-              { label: "上传票据", href: "/dashboard/apple/finance", icon: Receipt },
-              { label: "资产盘点", href: "/dashboard/apple/assets", icon: Package },
-              { label: "学生查询", href: "/dashboard/apple/students", icon: GraduationCap },
+              { label: "生成獎狀", href: "/dashboard/apple/awards/generate", icon: Award },
+              { label: "上傳票據", href: "/dashboard/apple/finance", icon: Receipt },
+              { label: "資產盤點", href: "/dashboard/apple/assets", icon: Package },
+              { label: "學生查詢", href: "/dashboard/apple/students", icon: GraduationCap },
             ].map((item) => (
               <a
                 key={item.label}
@@ -67,9 +67,9 @@ export default function AppleOverviewPage() {
           </div>
         </div>
 
-        {/* 最近动态 */}
+        {/* 最近動態 */}
         <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-5">
-          <h2 className="text-base font-semibold text-gray-800 mb-4">最近动态</h2>
+          <h2 className="text-base font-semibold text-gray-800 mb-4">最近動態</h2>
           <div className="space-y-3">
             {logs.map((log, i) => (
               <div key={i} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">

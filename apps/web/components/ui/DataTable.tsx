@@ -29,7 +29,7 @@ export default function DataTable<T>({
   pageSize = 20,
   onPageChange,
   loading,
-  emptyText = "暂无数据",
+  emptyText = "暫無數據",
 }: DataTableProps<T>) {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
@@ -57,7 +57,7 @@ export default function DataTable<T>({
             {loading ? (
               <tr>
                 <td colSpan={columns.length} className="px-4 py-12 text-center text-gray-400">
-                  加载中...
+                  加載中...
                 </td>
               </tr>
             ) : data.length === 0 ? (
@@ -86,11 +86,11 @@ export default function DataTable<T>({
         </table>
       </div>
 
-      {/* 分页 */}
+      {/* 分頁 */}
       {total > 0 && (
         <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
           <span className="text-sm text-gray-500">
-            共 {total} 条，第 {page}/{totalPages} 页
+            共 {total} 條，第 {page}/{totalPages} 頁
           </span>
           <div className="flex items-center gap-1">
             <button

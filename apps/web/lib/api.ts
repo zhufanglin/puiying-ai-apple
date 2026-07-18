@@ -25,7 +25,7 @@ async function request<T>(
 
   const json = await res.json();
   if (!res.ok) {
-    throw new Error(json.message || `请求失败 (${res.status})`);
+    throw new Error(json.message || `請求失敗 (${res.status})`);
   }
   return json;
 }

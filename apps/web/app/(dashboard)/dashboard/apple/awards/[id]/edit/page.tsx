@@ -10,7 +10,7 @@ import DataTable, { Column } from "@/components/ui/DataTable";
 import { awardApi } from "@/lib/services/awards";
 import type { Award, AwardRecipient, AwardTemplate } from "@/lib/types/awards";
 
-/** 表单验证结果 */
+/** 表單驗證結果 */
 interface FieldErrors {
   title?: string;
 }
@@ -46,7 +46,7 @@ export default function EditAwardPage() {
         setIssueDate(a.issue_date ? String(a.issue_date) : "");
         setAmount(a.amount ? String(a.amount) : "");
         setRemark(a.remark || "");
-        // 包含活跃模板，并确保当前奖状的模板始终在列表中
+        // 包含活躍模板，並確保當前獎狀的模板始終在列表中
         const activeTemplates = templateRes.data.items.filter((t) => t.is_active);
         if (a.template && !activeTemplates.find((t) => t.id === a.template!.id)) {
           activeTemplates.push(a.template);

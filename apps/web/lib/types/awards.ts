@@ -1,8 +1,8 @@
 /* ============================================================
- * 奖状 & 奖学金 — TypeScript 类型定义
+ * 獎狀 & 獎學金 — TypeScript 類型定義
  *
- * 与后端 API 响应结构一一对应。
- * 后端 Pydantic Schema 变更时，此文件需同步更新。
+ * 與後端 API 響應結構一一對應。
+ * 後端 Pydantic Schema 變更時，此文件需同步更新。
  * ============================================================ */
 
 // ==================== 通用 ====================
@@ -21,13 +21,13 @@ export interface PaginatedData<T> {
   total_pages: number;
 }
 
-// ==================== 奖状模板 ====================
+// ==================== 獎狀模板 ====================
 
 export interface AwardTemplate {
   id: number;
   name: string;
   description?: string;
-  category: string;        // 学业 / 品德 / 活动 / 其他
+  category: string;        // 學業 / 品德 / 活動 / 其他
   default_content?: string;
   badge_style?: string;
   is_active: boolean;
@@ -43,7 +43,7 @@ export interface AwardTemplateQuery {
   page_size?: number;
 }
 
-// ==================== 奖状 ====================
+// ==================== 獎狀 ====================
 
 export interface AwardRecipient {
   id: number;
@@ -53,7 +53,7 @@ export interface AwardRecipient {
   student_grade?: string;
   certificate_no?: string;
   reason?: string;
-  rank?: string;           // 一等奖 / 二等奖 / 三等奖 / 优秀奖
+  rank?: string;           // 一等獎 / 二等獎 / 三等獎 / 優秀獎
   created_at: string;
 }
 
@@ -123,14 +123,14 @@ export interface AwardUpdatePayload {
   remark?: string;
 }
 
-// ==================== 奖学金 ====================
+// ==================== 獎學金 ====================
 
 export interface ScholarshipApplication {
   id: number;
   student_name: string;
   student_class: string;
   student_grade?: string;
-  scholarship_type: string;  // 学业优秀 / 品德风尚 / 科技竞赛 / 体艺特长 / 助学金
+  scholarship_type: string;  // 學業優秀 / 品德風尚 / 科技競賽 / 體藝特長 / 助學金
   academic_year: string;
   semester: string;          // 上 / 下
   application_date: string;
@@ -171,7 +171,7 @@ export interface ScholarshipReviewPayload {
   review_comment?: string;
 }
 
-// ==================== 统计 ====================
+// ==================== 統計 ====================
 
 export interface AwardStatistics {
   total_awards: number;
@@ -198,7 +198,7 @@ export interface AwardsDashboardStats {
 }
 
 
-// ==================== 奖学金核算 ====================
+// ==================== 獎學金核算 ====================
 
 export interface CalculateResultItem {
   student_name: string;
@@ -215,7 +215,7 @@ export interface CalculateResult {
 }
 
 
-// ==================== 读稿生成 ====================
+// ==================== 讀稿生成 ====================
 
 export interface ScriptItem {
   student_name: string;
@@ -231,7 +231,7 @@ export interface ScriptOut {
 }
 
 
-// ==================== 批量证书生成（基于现有奖状） ====================
+// ==================== 批量證書生成（基於現有獎狀） ====================
 
 export interface CertificateRequestPayload {
   template_id?: number;

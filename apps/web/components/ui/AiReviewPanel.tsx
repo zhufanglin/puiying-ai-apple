@@ -10,7 +10,7 @@ interface AiReviewPanelProps {
 }
 
 export default function AiReviewPanel({
-  title = "AI 分析结果",
+  title = "AI 分析結果",
   content,
   loading,
   onRegenerate,

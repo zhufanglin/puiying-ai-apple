@@ -1,9 +1,9 @@
 /**
- * 发票 OCR 文本解析器 — 用于资产登记
+ * 發票 OCR 文本解析器 — 用於資產登記
  *
- * 支持中英文发票，多策略逐行提取字段。
+ * 支持中英文發票，多策略逐行提取字段。
  *
- * 输出: { assetName, category, amount, purchaseDate, vendor, confidence, warnings, raw_text }
+ * 輸出: { assetName, category, amount, purchaseDate, vendor, confidence, warnings, raw_text }
  */
 
 import type { OcrResult } from "./ocr-engine";
@@ -20,7 +20,7 @@ export interface InvoiceResult {
 }
 
 // ================================================================
-// 类别关键词映射
+// 類別關鍵詞映射
 // ================================================================
 
 const CATEGORY_KEYWORDS: Record<string, string> = {
@@ -29,10 +29,10 @@ const CATEGORY_KEYWORDS: Record<string, string> = {
   "打印機": "IT設備", "掃描儀": "IT設備", "伺服器": "IT設備", "顯示器": "IT設備",
   "monitor": "IT設備", "printer": "IT設備", "server": "IT設備", "鍵盤": "IT設備",
   "滑鼠": "IT設備", "mouse": "IT設備", "keyboard": "IT設備", "computer": "IT設備",
-  "桌": "家具", "椅": "家具", "櫃": "家具", "架": "家具",
-  "梳化": "家具", "沙發": "家具", "床": "家具",
-  "desk": "家具", "chair": "家具", "cabinet": "家具", "shelf": "家具",
-  "文件櫃": "家具", "書櫃": "家具", "辦公桌": "家具",
+  "桌": "傢俱", "椅": "傢俱", "櫃": "傢俱", "架": "傢俱",
+  "梳化": "傢俱", "沙發": "傢俱", "牀": "傢俱",
+  "desk": "傢俱", "chair": "傢俱", "cabinet": "傢俱", "shelf": "傢俱",
+  "文件櫃": "傢俱", "書櫃": "傢俱", "辦公桌": "傢俱",
   "空調": "電器", "冷氣": "電器", "投影": "電器", "音響": "電器",
   "電視": "電器", "風扇": "電器", "暖爐": "電器", "雪櫃": "電器",
   "冰箱": "電器", "微波爐": "電器", "熱水": "電器",
@@ -52,7 +52,7 @@ function inferCategory(name: string): string {
 }
 
 // ================================================================
-// 标签匹配模式
+// 標籤匹配模式
 // ================================================================
 
 const LABEL_PATTERNS = {
@@ -61,10 +61,10 @@ const LABEL_PATTERNS = {
 };
 
 // ================================================================
-// 工具函数
+// 工具函數
 // ================================================================
 
-/** 从一行文本提取 yyyy-mm-dd 格式日期 */
+/** 從一行文本提取 yyyy-mm-dd 格式日期 */
 function extractDateFromLine(line: string): string | null {
   // 2026-07-10 / 2026/07/10
   let m = line.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
@@ -78,7 +78,7 @@ function extractDateFromLine(line: string): string | null {
   return null;
 }
 
-/** 从一行文本提取金额 */
+/** 從一行文本提取金額 */
 function extractAmountFromLine(line: string): { amount: number; source: string } | null {
   // HKD 7,200.00 / HK$ 7,200.00
   let m = line.match(/HKD?\s*\$?\s*([\d,]+\.?\d*)/i);
@@ -89,13 +89,13 @@ function extractAmountFromLine(line: string): { amount: number; source: string }
   // $7,200.00
   m = line.match(/\$\s*([\d,]+\.\d{2})/);
   if (m) return { amount: parseFloat(m[1]!.replace(/,/g, "")), source: m[0] };
-  // 纯金额行: 单个整数 ≥100
+  // 純金額行: 單個整數 ≥100
   m = line.match(/^(\d{3,})$/);
   if (m) return { amount: parseInt(m[1]!), source: m[1]! };
   return null;
 }
 
-/** 判断一行是否为噪音（页码、空行、纯符号等） */
+/** 判斷一行是否為噪音（頁碼、空行、純符號等） */
 function isNoise(line: string): boolean {
   if (!line.trim()) return true;
   if (/^(Page|頁碼|QTY|UNIT|Subtotal|Tax|VAT|Discount|Shipping|\(continued\))$/i.test(line)) return true;
@@ -103,7 +103,7 @@ function isNoise(line: string): boolean {
   return false;
 }
 
-/** 行以标签开头（品名: xxx / Vendor: xxx） */
+/** 行以標籤開頭（品名: xxx / Vendor: xxx） */
 function extractLabeledField(line: string, patterns: RegExp[]): string | null {
   for (const re of patterns) {
     const m = line.match(re);
@@ -113,14 +113,14 @@ function extractLabeledField(line: string, patterns: RegExp[]): string | null {
 }
 
 // ================================================================
-// 主解析函数 — 多策略
+// 主解析函數 — 多策略
 // ================================================================
 
 export function parseInvoice(ocrResult: OcrResult): InvoiceResult {
   const rawText = ocrResult.text;
   const allLines = ocrResult.lines.map((l) => l.text).filter((l) => !isNoise(l));
 
-  // ── 策略1: 标签匹配 ──
+  // ── 策略1: 標籤匹配 ──
   const joinedText = allLines.join("\n");
   let assetName = "";
   let vendor = "";
@@ -132,7 +132,7 @@ export function parseInvoice(ocrResult: OcrResult): InvoiceResult {
     if (ven && !vendor) vendor = ven;
   }
 
-  // ── 策略2: 逐行扫描提取日期/金额 ──
+  // ── 策略2: 逐行掃描提取日期/金額 ──
   let purchaseDate = "";
   let amount = 0;
   let amountSource = "";
@@ -143,10 +143,10 @@ export function parseInvoice(ocrResult: OcrResult): InvoiceResult {
       const d = extractDateFromLine(line);
       if (d) purchaseDate = d;
     }
-    // 金额（取带 HKD/HK$ 的，没有则取最大数字）
+    // 金額（取帶 HKD/HK$ 的，沒有則取最大數字）
     const amt = extractAmountFromLine(line);
     if (amt) {
-      // 优先使用带货币标记的
+      // 優先使用帶貨幣標記的
       const hasCurrency = /HKD|HK\$|\$/i.test(amt.source);
       if (hasCurrency && (!amountSource || !/HKD|HK\$|\$/i.test(amountSource))) {
         amount = amt.amount;
@@ -158,22 +158,22 @@ export function parseInvoice(ocrResult: OcrResult): InvoiceResult {
     }
   }
 
-  // ── 策略3: 智能推断 — 发票号作为参考 ──
-  // 找类似 "INV-xxx" / "TEST-xxx" 的发票号 → 存入备注
+  // ── 策略3: 智能推斷 — 發票號作為參考 ──
+  // 找類似 "INV-xxx" / "TEST-xxx" 的發票號 → 存入備註
   let invoiceNo = "";
   for (const line of allLines) {
     const m = line.match(/^(?:INVOICE|INV|TEST|REF|NO|#)[-:\s]*([A-Z0-9][-A-Z0-9]+)$/i);
     if (m) { invoiceNo = m[1] || m[0]; break; }
   }
 
-  // ── 策略4: 找疑似公司名/资产名的行 ──
+  // ── 策略4: 找疑似公司名/資產名的行 ──
   if (!assetName || !vendor) {
     for (const line of allLines) {
       const t = line.trim();
-      // 跳过已识别的日期/金额/发票号
+      // 跳過已識別的日期/金額/發票號
       if (!t || extractDateFromLine(t) || extractAmountFromLine(t) || isNoise(t)) continue;
       if (t === invoiceNo || t === "INVOICE") continue;
-      // 长字符串 → 可能是公司名或品名
+      // 長字符串 → 可能是公司名或品名
       if (t.length >= 4) {
         if (!vendor && /(?:公司|LIMITED|LTD|INC|CO\.|CORP|enterprise|company|limited|ltd|inc|corp)/i.test(t)) {
           vendor = t;
@@ -184,7 +184,7 @@ export function parseInvoice(ocrResult: OcrResult): InvoiceResult {
     }
   }
 
-  // ── 组装结果 ──
+  // ── 組裝結果 ──
   const category = inferCategory(assetName);
   const filled = [assetName !== "", amount > 0, purchaseDate !== "", vendor !== ""].filter(Boolean).length;
   let confidence: "low" | "medium" | "high";
@@ -200,7 +200,7 @@ export function parseInvoice(ocrResult: OcrResult): InvoiceResult {
   if (invoiceNo && !assetName) warnings.push(`已識別發票號 ${invoiceNo}，請手動輸入資產名稱`);
   if (ocrResult.confidence < 50) warnings.push("OCR 識別信心較低，建議仔細核對");
 
-  // 备注：把发票号归入 vendor 用于前端展示
+  // 備註：把發票號歸入 vendor 用於前端展示
   if (!vendor && invoiceNo) vendor = invoiceNo;
 
   return {

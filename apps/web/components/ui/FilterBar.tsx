@@ -39,7 +39,7 @@ export default function FilterBar({ fields, values, onChange, onReset, onSearch 
           ) : (
             <input
               type={field.type || "text"}
-              placeholder={field.placeholder || "请输入..."}
+              placeholder={field.placeholder || "請輸入..."}
               value={values[field.key] || ""}
               onChange={(e) => onChange(field.key, e.target.value)}
               className="text-sm border border-gray-200 rounded px-2 py-1.5 w-36 focus:outline-none focus:border-primary-400"

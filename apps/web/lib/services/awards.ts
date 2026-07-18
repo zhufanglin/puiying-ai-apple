@@ -1,12 +1,12 @@
 /* ============================================================
- * 奖状 & 奖学金 — 前端 API 调用服务
+ * 獎狀 & 獎學金 — 前端 API 調用服務
  *
- * 所有后端 API 调用集中在此文件，支持：
- * - 奖状模板 CRUD
- * - 奖状 CRUD + 状态操作
- * - 获奖学生管理
- * - 奖学金 CRUD + 审核
- * - 统计看板数据
+ * 所有後端 API 調用集中在此文件，支持：
+ * - 獎狀模板 CRUD
+ * - 獎狀 CRUD + 狀態操作
+ * - 獲獎學生管理
+ * - 獎學金 CRUD + 審核
+ * - 統計看板數據
  *
  * 使用方法：
  *   import { awardApi } from "@/lib/services/awards";
@@ -37,17 +37,17 @@ import type {
   BatchGenerateData,
 } from "@/lib/types/awards";
 
-/** 奖状 & 奖学金 API 集合 */
+/** 獎狀 & 獎學金 API 集合 */
 export const awardApi = {
-  // ==================== 统计 ====================
+  // ==================== 統計 ====================
 
-  /** 获取综合统计数据 */
+  /** 獲取綜合統計數據 */
   getStatistics: () =>
     api.get<AwardsDashboardStats>("/apple/awards/statistics"),
 
-  // ==================== 奖状模板 ====================
+  // ==================== 獎狀模板 ====================
 
-  /** 查询奖状模板列表 */
+  /** 查詢獎狀模板列表 */
   getTemplates: (params?: AwardTemplateQuery) => {
     const search = new URLSearchParams();
     if (params?.name) search.set("name", params.name);
@@ -59,25 +59,25 @@ export const awardApi = {
     return api.get<PaginatedData<AwardTemplate>>(`/apple/awards/templates${qs ? `?${qs}` : ""}`);
   },
 
-  /** 获取单个奖状模板 */
+  /** 獲取單個獎狀模板 */
   getTemplate: (id: number) =>
     api.get<AwardTemplate>(`/apple/awards/templates/${id}`),
 
-  /** 创建奖状模板 */
+  /** 創建獎狀模板 */
   createTemplate: (data: { name: string; category?: string; description?: string }) =>
     api.post<AwardTemplate>("/apple/awards/templates", data),
 
-  /** 更新奖状模板 */
+  /** 更新獎狀模板 */
   updateTemplate: (id: number, data: Partial<AwardTemplate>) =>
     api.put<AwardTemplate>(`/apple/awards/templates/${id}`, data),
 
-  /** 删除奖状模板 */
+  /** 刪除獎狀模板 */
   deleteTemplate: (id: number) =>
     api.delete<{ deleted: boolean }>(`/apple/awards/templates/${id}`),
 
-  // ==================== 奖状 ====================
+  // ==================== 獎狀 ====================
 
-  /** 查询奖状列表 */
+  /** 查詢獎狀列表 */
   getAwards: (params?: AwardQuery) => {
     const search = new URLSearchParams();
     if (params?.title) search.set("title", params.title);
@@ -91,37 +91,37 @@ export const awardApi = {
     return api.get<PaginatedData<AwardListItem>>(`/apple/awards${qs ? `?${qs}` : ""}`);
   },
 
-  /** 获取单个奖状详情（含模板 + 获奖名单） */
+  /** 獲取單個獎狀詳情（含模板 + 獲獎名單） */
   getAward: (id: number) =>
     api.get<Award>(`/apple/awards/${id}`),
 
-  /** 创建奖状（含获奖学生） */
+  /** 創建獎狀（含獲獎學生） */
   createAward: (data: AwardCreatePayload) =>
     api.post<Award>("/apple/awards", data),
 
-  /** 更新奖状基本信息 */
+  /** 更新獎狀基本信息 */
   updateAward: (id: number, data: AwardUpdatePayload) =>
     api.put<Award>(`/apple/awards/${id}`, data),
 
-  /** 删除奖状 */
+  /** 刪除獎狀 */
   deleteAward: (id: number) =>
     api.delete<{ deleted: boolean }>(`/apple/awards/${id}`),
 
-  /** 批量删除奖状 */
+  /** 批量刪除獎狀 */
   batchDeleteAwards: (ids: number[]) =>
     api.post<{ deleted_count: number; total: number }>("/apple/awards/batch-delete", { ids }),
 
-  /** 确认奖状（draft/calculated → confirmed） */
+  /** 確認獎狀（draft/calculated → confirmed） */
   publishAward: (id: number) =>
     api.post<Award>(`/apple/awards/${id}/publish`),
 
-  /** 取消奖状（→ cancelled） */
+  /** 取消獎狀（→ cancelled） */
   cancelAward: (id: number) =>
     api.post<Award>(`/apple/awards/${id}/cancel`),
 
   // ==================== 批量生成 ====================
 
-  /** 批量生成奖状文档 */
+  /** 批量生成獎狀文檔 */
   batchGenerate: (data: {
     template_id: number;
     recipients: { student_name: string; student_class: string }[];
@@ -131,19 +131,19 @@ export const awardApi = {
     "/apple/awards/batch-generate", { ...data, output_format: "pdf" }
   ),
 
-  // ==================== 获奖学生 ====================
+  // ==================== 獲獎學生 ====================
 
-  /** 批量添加获奖学生 */
+  /** 批量添加獲獎學生 */
   addRecipients: (awardId: number, recipients: AwardRecipientCreatePayload[]) =>
     api.post<AwardRecipient[]>(`/apple/awards/${awardId}/recipients`, recipients),
 
-  /** 删除获奖学生 */
+  /** 刪除獲獎學生 */
   removeRecipient: (recipientId: number) =>
     api.delete<{ deleted: boolean }>(`/apple/awards/recipients/${recipientId}`),
 
-  // ==================== 奖学金 ====================
+  // ==================== 獎學金 ====================
 
-  /** 查询奖学金申请列表 */
+  /** 查詢獎學金申請列表 */
   getScholarships: (params?: ScholarshipQuery) => {
     const search = new URLSearchParams();
     if (params?.student_name) search.set("student_name", params.student_name);
@@ -156,45 +156,45 @@ export const awardApi = {
     return api.get<PaginatedData<ScholarshipApplication>>(`/apple/awards/scholarships${qs ? `?${qs}` : ""}`);
   },
 
-  /** 获取单个奖学金申请详情 */
+  /** 獲取單個獎學金申請詳情 */
   getScholarship: (id: number) =>
     api.get<ScholarshipApplication>(`/apple/awards/scholarships/${id}`),
 
-  /** 提交奖学金申请 */
+  /** 提交獎學金申請 */
   applyScholarship: (data: ScholarshipApplyPayload) =>
     api.post<ScholarshipApplication>("/apple/awards/scholarships", data),
 
-  /** 审核奖学金申请 */
+  /** 審核獎學金申請 */
   reviewScholarship: (id: number, data: ScholarshipReviewPayload) =>
     api.post<ScholarshipApplication>(`/apple/awards/scholarships/${id}/review`, data),
 
-  // ==================== 奖学金核算 ====================
+  // ==================== 獎學金核算 ====================
 
-  /** 核算奖学金金额（按获奖等级自动计算） */
+  /** 核算獎學金金額（按獲獎等級自動計算） */
   calculateScholarship: (awardId: number, rules?: Record<string, number>) =>
     api.post<CalculateResult>(`/apple/awards/${awardId}/calculate`, { rules }),
 
-  /** 确认核算结果（将状态从 calculated 改为 confirmed） */
+  /** 確認核算結果（將狀態從 calculated 改為 confirmed） */
   confirmScholarship: (awardId: number) =>
     api.post<{ id: number; status: string; message: string }>(`/apple/awards/${awardId}/confirm`),
 
-  // ==================== 读稿生成 ====================
+  // ==================== 讀稿生成 ====================
 
-  /** 生成颁奖读稿（按指定方式排序） */
+  /** 生成頒獎讀稿（按指定方式排序） */
   generateScript: (awardId: number, groupBy: string = "class") => {
     const params = new URLSearchParams({ group_by: groupBy });
     return api.get<ScriptOut>(`/apple/awards/${awardId}/script?${params}`);
   },
 
-  // ==================== 批量生成证书（基于现有奖状） ====================
+  // ==================== 批量生成證書（基於現有獎狀） ====================
 
-  /** 为奖状中指定获奖者批量生成证书 */
+  /** 為獎狀中指定獲獎者批量生成證書 */
   generateCertificates: (awardId: number, data: CertificateRequestPayload) =>
     api.post<BatchGenerateData>(`/apple/awards/${awardId}/certificates`, data),
 
-  // ==================== 证书生成与下载 ====================
+  // ==================== 證書生成與下載 ====================
 
-  /** 下载单个获奖者证书（自动触发浏览器下载） */
+  /** 下載單個獲獎者證書（自動觸發瀏覽器下載） */
   downloadRecipientCertificate: async (
     awardId: number,
     recipientId: number,
@@ -211,7 +211,7 @@ export const awardApi = {
     URL.revokeObjectURL(link.href);
   },
 
-  /** 下载已通过奖学金证书（自动触发浏览器下载） */
+  /** 下載已通過獎學金證書（自動觸發瀏覽器下載） */
   downloadScholarshipCertificate: async (
     appId: number,
   ) => {
@@ -227,9 +227,9 @@ export const awardApi = {
     URL.revokeObjectURL(link.href);
   },
 
-  // ==================== 批量导出证书 ====================
+  // ==================== 批量導出證書 ====================
 
-  /** 批量导出奖状证书（ZIP 包，自动触发下载） */
+  /** 批量導出獎狀證書（ZIP 包，自動觸發下載） */
   batchExportAwards: async (awardIds: number[]) => {
     const token = localStorage.getItem("token");
     const url = `${api.baseUrl}/apple/awards/batch-export`;
@@ -247,7 +247,7 @@ export const awardApi = {
     URL.revokeObjectURL(link.href);
   },
 
-  /** 批量导出奖学金证书（ZIP 包，自动触发下载） */
+  /** 批量導出獎學金證書（ZIP 包，自動觸發下載） */
   batchExportScholarships: async (appIds: number[]) => {
     const token = localStorage.getItem("token");
     const url = `${api.baseUrl}/apple/awards/scholarships/batch-export`;
