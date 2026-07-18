@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import asyncio
 import tempfile
 import unittest
 from pathlib import Path
 
 from workers.ocr_worker.handlers.receipt_handler import ReceiptHandler
 from workers.ocr_worker.services.ocr_engine import BaiduOcrBackend, OcrEngine, OcrResult
-from workers.ocr_worker.tasks import build_job_result
+from sqlalchemy.pool import NullPool
+
+from workers.ocr_worker.tasks import build_job_result, create_worker_session_factory
 
 
 class BaiduOcrWorkerTest(unittest.TestCase):
@@ -121,6 +124,18 @@ class BaiduOcrWorkerTest(unittest.TestCase):
         self.assertEqual(result["ocr"]["engine"], "baidu_ocr")
         self.assertEqual(result["fields"]["amount"], 100.0)
         self.assertIn("raw_text", result)
+
+    def test_worker_sessions_do_not_reuse_connections_across_event_loops(self) -> None:
+        url = "sqlite+aiosqlite:///:memory:"
+        first_engine, _ = create_worker_session_factory(url)
+        second_engine, _ = create_worker_session_factory(url)
+        try:
+            self.assertIsNot(first_engine, second_engine)
+            self.assertIsInstance(first_engine.sync_engine.pool, NullPool)
+            self.assertIsInstance(second_engine.sync_engine.pool, NullPool)
+        finally:
+            asyncio.run(first_engine.dispose())
+            asyncio.run(second_engine.dispose())
 
 
 if __name__ == "__main__":
