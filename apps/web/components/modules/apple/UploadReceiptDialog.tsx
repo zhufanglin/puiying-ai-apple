@@ -155,7 +155,10 @@ export default function UploadReceiptDialog({ open, onClose, onConfirm }: Props)
           const reason = aiError instanceof Error ? aiError.message : "AI 結構化失敗";
           parsed = {
             ...fallback,
-            warnings: [`DeepSeek 不可用，已改用保守規則：${reason}`, ...fallback.warnings],
+            warnings: [
+              `AI 欄位結構化未完成，已改用保守規則：${reason}`,
+              ...fallback.warnings,
+            ],
           };
           setAnalysisSource(recognized.structured ? "OCR Worker 保守規則" : "瀏覽器保守規則");
         }
