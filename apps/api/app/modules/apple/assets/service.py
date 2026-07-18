@@ -92,7 +92,7 @@ async def writeoff_asset(db: AsyncSession, asset: Asset, reason: str) -> Asset:
         action="writeoff",
         module="assets",
         entity_type="asset",
-        entity_id=str(asset.id),
+        entity_id=asset.id,
     )
     db.add(log)
 

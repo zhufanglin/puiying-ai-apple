@@ -1,0 +1,25 @@
+warning: in the working copy of 'apps/api/app/modules/apple/assets/models.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/app/modules/apple/assets/permissions.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/app/modules/apple/assets/repository.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/app/modules/apple/assets/router.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/app/modules/apple/assets/schemas.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/app/modules/apple/assets/service.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/app/modules/apple/assets/tests/test_assets.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/app/modules/apple/finance/models.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/app/modules/apple/finance/permissions.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/app/modules/apple/finance/repository.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/app/modules/apple/finance/router.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/app/modules/apple/finance/schemas.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/app/modules/apple/finance/service.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/app/modules/apple/finance/tests/test_finance.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/web/components/modules/apple/AssetMovementDialog.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/web/components/modules/apple/UploadAssetDialog.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/web/components/modules/apple/UploadReceiptDialog.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/web/components/modules/apple/WriteoffDialog.tsx', LF will be replaced by CRLF the next time Git touches it
+ apps/api/app/modules/apple/assets/router.py        |  8 [32m+[m[31m--[m
+ apps/api/app/modules/apple/assets/service.py       |  2 [32m+[m[31m-[m
+ apps/api/app/modules/apple/finance/router.py       | 10 [32m+[m[31m--[m
+ apps/api/app/modules/apple/finance/service.py      | 75 [32m+++++++++++++[m[31m---------[m
+ .../components/modules/apple/UploadAssetDialog.tsx | 19 [32m++[m[31m----[m
+ .../modules/apple/UploadReceiptDialog.tsx          | 18 [32m++[m[31m----[m
+ 6 files changed, 66 insertions(+), 66 deletions(-)
