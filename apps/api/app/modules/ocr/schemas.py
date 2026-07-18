@@ -109,7 +109,7 @@ class ReceiptAIFields(BaseModel):
 
 
 class ReceiptPromptResult(BaseModel):
-    """Prompt 的唯一合法输出结构。"""
+    """模型字段经白名单归一化并由服务端补回 OCR 原文后的内部契约。"""
 
     fields: ReceiptAIFields
     confidence: Literal["low", "medium", "high"]
