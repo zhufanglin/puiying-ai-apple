@@ -7,14 +7,14 @@ import { Plus, GraduationCap, Search } from "lucide-react";
 
 interface StudentRecord {
   id: string;
-  student_no: string;
-  name_zh: string;
-  name_en?: string;
-  class_name: string;
+  studentNo: string;
+  nameZh: string;
+  nameEn?: string;
+  className: string;
   status: string;
-  admission_date?: string;
-  parent_name?: string;
-  parent_phone?: string;
+  admissionDate?: string;
+  parentName?: string;
+  parentPhone?: string;
 }
 
 const STATUS_MAP: Record<string, { label: string; className: string }> = {
@@ -54,21 +54,21 @@ export default function StudentsPage() {
   const filtered = search
     ? students.filter(
         (s) =>
-          s.name_zh.includes(search) ||
-          s.student_no.includes(search) ||
-          s.class_name.includes(search)
+          s.nameZh.includes(search) ||
+          s.studentNo.includes(search) ||
+          s.className.includes(search)
       )
     : students;
 
   const columns: Column<StudentRecord>[] = [
-    { key: "student_no", header: "学号", width: "120px" },
-    { key: "name_zh", header: "姓名", width: "100px" },
+    { key: "studentNo", header: "学号", width: "120px" },
+    { key: "nameZh", header: "姓名", width: "100px" },
     {
-      key: "class_name",
+      key: "className",
       header: "班级",
       width: "100px",
       render: (row) => (
-        <span className="text-sm font-medium text-gray-900">{row.class_name}</span>
+        <span className="text-sm font-medium text-gray-900">{row.className}</span>
       ),
     },
     {
@@ -85,22 +85,22 @@ export default function StudentsPage() {
       },
     },
     {
-      key: "parent_name",
+      key: "parentName",
       header: "家长",
       width: "100px",
-      render: (row) => row.parent_name || "-",
+      render: (row) => row.parentName || "-",
     },
     {
-      key: "parent_phone",
+      key: "parentPhone",
       header: "联系电话",
       width: "130px",
-      render: (row) => row.parent_phone || "-",
+      render: (row) => row.parentPhone || "-",
     },
     {
-      key: "admission_date",
+      key: "admissionDate",
       header: "入学日期",
       width: "110px",
-      render: (row) => row.admission_date || "-",
+      render: (row) => row.admissionDate || "-",
     },
   ];
 
