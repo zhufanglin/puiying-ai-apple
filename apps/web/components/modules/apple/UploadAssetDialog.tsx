@@ -46,7 +46,6 @@ export default function UploadAssetDialog({ open, onClose, onConfirm }: Props) {
   const [saving, setSaving] = useState(false);
   const [progress, setProgress] = useState(0);
   const [ocr, setOcr] = useState<InvoiceResult|null>(null);
-  const [fileId, setFileId] = useState<number|null>(null);
   const [error, setError] = useState<string|null>(null);
   const [statusText, setStatusText] = useState("OCR 識別中...");
   const [analysisSource, setAnalysisSource] = useState("");
@@ -146,7 +145,6 @@ export default function UploadAssetDialog({ open, onClose, onConfirm }: Props) {
       }
 
       setOcr(parsed);
-      setFileId(recognized.fileId);
 
       // 3. 自動填充表單
       setForm({

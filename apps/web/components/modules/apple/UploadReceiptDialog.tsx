@@ -26,7 +26,6 @@ interface OCRResult {
   amount: number | null; currency: string; date: string;
   payer: string; purpose: string; confidence: "low"|"medium"|"high";
   warnings: string[]; raw_text: string;
-  fileId?: number;
 }
 
 interface Props { open: boolean; onClose: () => void; onConfirm: (data: OCRResult) => void; }
@@ -128,10 +127,8 @@ export default function UploadReceiptDialog({ open, onClose, onConfirm }: Props)
     setStatusText("百度 OCR 識別中...");
 
     try {
-      // 1. 優先後端百度 OCR；不可用時回退瀏覽器 Tesseract.js
-      const recognized = await recognizeWithServerFallback(file, {
-        module: "finance",
-        jobType: "receipt",
+      // 1. OCR 識別
+      const ocrResult = await recognizeImage(file, {
         language: "chi_sim+eng",
         onProgress: (pct) => setProgress(Math.round(pct * 100)),
       });
@@ -182,9 +179,8 @@ export default function UploadReceiptDialog({ open, onClose, onConfirm }: Props)
         payer: parsed.fields.payer,
         purpose: parsed.fields.purpose,
         confidence: parsed.confidence,
-        warnings,
+        warnings: parsed.warnings,
         raw_text: parsed.raw_text,
-        fileId: recognized.fileId ?? undefined,
       };
 
       setOcr(result);
