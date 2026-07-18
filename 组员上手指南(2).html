@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>培英 AI 数智化平台 — 组员上手指南</title>
+<style>
+  :root {
+    --c-primary: #2563eb;
+    --c-primary-light: #eff6ff;
+    --c-border: #e5e7eb;
+    --c-text: #1f2937;
+    --c-muted: #6b7280;
+    --c-bg: #f9fafb;
+    --c-code-bg: #1e293b;
+    --radius: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", sans-serif;
+    color: var(--c-text); background: var(--c-bg); line-height: 1.7;
+  }
+  .container { max-width: 960px; margin: 0 auto; padding: 0 20px; }
+
+  /* Header */
+  header {
+    background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+    color: #fff; padding: 60px 0 40px; text-align: center;
+  }
+  header h1 { font-size: 2rem; margin-bottom: 8px; }
+  header p { opacity: 0.85; font-size: 1.05rem; }
+
+  /* TOC */
+  .toc {
+    background: #fff; border: 1px solid var(--c-border); border-radius: var(--radius);
+    padding: 24px 28px; margin: 30px 0;
+  }
+  .toc h2 { font-size: 1.1rem; margin-bottom: 12px; }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin: 6px 0; }
+  .toc a { color: var(--c-primary); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+
+  /* Sections */
+  section {
+    background: #fff; border: 1px solid var(--c-border); border-radius: var(--radius);
+    padding: 28px 32px; margin: 24px 0;
+  }
+  section h2 {
+    font-size: 1.3rem; border-left: 4px solid var(--c-primary);
+    padding-left: 12px; margin-bottom: 16px;
+  }
+  section h3 { font-size: 1.05rem; margin: 18px 0 8px; color: var(--c-primary); }
+
+  /* Badge */
+  .badge {
+    display: inline-block; padding: 2px 10px; border-radius: 12px;
+    font-size: 0.8rem; font-weight: 600; margin-right: 4px;
+  }
+  .badge-red { background: #fee2e2; color: #991b1b; }
+  .badge-blue { background: #dbeafe; color: #1e40af; }
+  .badge-orange { background: #ffedd5; color: #9a3412; }
+  .badge-green { background: #dcfce7; color: #166534; }
+  .badge-purple { background: #f3e8ff; color: #6b21a8; }
+
+  /* Code */
+  code {
+    background: #f1f5f9; padding: 1px 6px; border-radius: 3px;
+    font-family: "Cascadia Code", "Fira Code", Consolas, monospace; font-size: 0.88em;
+  }
+  pre {
+    background: var(--c-code-bg); color: #e2e8f0; padding: 18px 20px;
+    border-radius: var(--radius); overflow-x: auto; font-size: 0.85rem;
+    line-height: 1.6; margin: 12px 0;
+  }
+  pre code { background: none; padding: 0; color: inherit; }
+  .cmt { color: #94a3b8; }
+  .str { color: #a5d6ff; }
+  .kw { color: #c084fc; }
+  .fn { color: #67e8f9; }
+
+  /* Steps */
+  .steps { counter-reset: step; list-style: none; padding: 0; }
+  .steps li { counter-increment: step; margin: 10px 0; padding-left: 36px; position: relative; }
+  .steps li::before {
+    content: counter(step);
+    position: absolute; left: 0; top: 2px;
+    width: 24px; height: 24px; background: var(--c-primary);
+    color: #fff; border-radius: 50%; text-align: center;
+    font-size: 0.8rem; font-weight: 700; line-height: 24px;
+  }
+
+  /* Card grid */
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin: 14px 0; }
+  .card {
+    border: 1px solid var(--c-border); border-radius: var(--radius); padding: 16px;
+    background: #fafbfc;
+  }
+  .card h4 { font-size: 0.95rem; margin-bottom: 4px; }
+  .card p { font-size: 0.85rem; color: var(--c-muted); }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.9rem; }
+  th, td { padding: 8px 12px; border: 1px solid var(--c-border); text-align: left; }
+  th { background: #f1f5f9; font-weight: 600; }
+  tr:hover td { background: #f8fafc; }
+
+  /* Alert */
+  .alert {
+    border-radius: var(--radius); padding: 14px 18px; margin: 14px 0;
+    font-size: 0.9rem;
+  }
+  .alert-info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+  .alert-warn { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+  .alert-success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+  .alert-danger { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+
+  footer {
+    text-align: center; color: var(--c-muted); padding: 40px 0;
+    font-size: 0.85rem;
+  }
+
+  @media (max-width: 640px) {
+    header { padding: 40px 0 30px; }
+    header h1 { font-size: 1.5rem; }
+    section { padding: 20px 18px; }
+    pre { font-size: 0.78rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <h1>🚀 培英 AI 数智化平台 · Apple 子系统</h1>
+    <p>组员零基础 · 手把手 · 上手指南</p>
+  </div>
+</header>
+
+<div class="container">
+
+<!-- ====== TOC ====== -->
+<nav class="toc">
+  <h2>📋 目录</h2>
+  <ol>
+    <li><a href="#s1">项目是什么</a></li>
+    <li><a href="#s2">分工（你要做什么）</a></li>
+    <li><a href="#s3">环境准备（30 分钟搞定）</a></li>
+    <li><a href="#s4">项目结构速览</a></li>
+    <li><a href="#s5">框架怎么用（核心规则）</a></li>
+    <li><a href="#s6">后端开发模板（照着写）</a></li>
+    <li><a href="#s7">前端开发模板（照着写）</a></li>
+    <li><a href="#s8">提交与日常流程</a></li>
+    <li><a href="#s9">常见问题</a></li>
+  </ol>
+</nav>
+
+<!-- ====== 1 ====== -->
+<section id="s1">
+  <h2>1. 项目是什么</h2>
+
+  <p>这是<strong>培英中学</strong>的 AI 数智化管理平台，第一个子系统叫 <strong>Apple</strong>，包含 4 个模块：</p>
+
+  <div class="card-grid">
+    <div class="card">
+      <h4>🏆 A1 奖状奖学金</h4>
+      <p>模板管理 → AI 生成评语 → 审批 → 打印</p>
+    </div>
+    <div class="card">
+      <h4>💰 A2 财务收支</h4>
+      <p>收支登记 → 拍照 OCR 识别票据 → 统计</p>
+    </div>
+    <div class="card">
+      <h4>📦 A3 资产盘点</h4>
+      <p>资产入库 → 盘点 → 折旧 → 报废审批</p>
+    </div>
+    <div class="card">
+      <h4>🎓 A4 学生事务</h4>
+      <p>学生档案 → AI 画像 → 在校证明 → 请假</p>
+    </div>
+  </div>
+
+  <div class="alert alert-info">
+    <strong>技术栈：</strong>后端 Python + FastAPI，前端 Next.js + React + Tailwind，数据库 PostgreSQL，队列 Redis + Celery，OCR 用 PaddleOCR。
+  </div>
+</section>
+
+<!-- ====== 2 ====== -->
+<section id="s2">
+  <h2>2. 分工（你要做什么）</h2>
+
+  <table>
+    <tr><th>角色</th><th>负责</th><th>关键目录</th><th>必读章节</th></tr>
+    <tr>
+      <td><span class="badge badge-red">同学1 Leader</span></td>
+      <td>底座 + 审核 + 合并</td>
+      <td><code>core/</code> <code>db/</code> <code>common/</code></td>
+      <td>全文档</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-blue">同学2 A1</span></td>
+      <td>奖状奖学金（含 AI 评语）</td>
+      <td><code>apple/awards/</code> + 前端 <code>awards/</code></td>
+      <td>§3 §4 §5 §6 §7 §8</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-orange">同学3 A2+A3</span></td>
+      <td>财务收支 + 资产盘点（含 OCR）</td>
+      <td><code>apple/finance/</code> <code>apple/assets/</code> + 前端</td>
+      <td>§3 §4 §5 §6 §7 §8</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-green">同学4 A4+AI</span></td>
+      <td>学生事务 + Celery Worker + AI Prompt</td>
+      <td><code>apple/students/</code> <code>workers/</code> + 前端</td>
+      <td>§3 §4 §5 §6 §7 §8</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-purple">同学5 文档</span></td>
+      <td>11 份文档（见 docs/ 目录）</td>
+      <td><code>docs/</code></td>
+      <td>§3 §4 §8</td>
+    </tr>
+  </table>
+
+  <div class="alert alert-warn">
+    <strong>⚠️ 注意：</strong>不要在 <code>core/</code> <code>db/</code> <code>common/</code> <code>accounts/</code> 里改代码——这些是底座，由同学1 统一维护。你只在自己的模块目录写代码。
+  </div>
+</section>
+
+<!-- ====== 3 ====== -->
+<section id="s3">
+  <h2>3. 环境准备（30 分钟搞定）</h2>
+
+  <h3>你需要安装的工具</h3>
+  <table>
+    <tr><th>工具</th><th>下载地址</th><th>检查命令</th></tr>
+    <tr><td>Python 3.12+</td><td><a href="https://www.python.org/downloads/" target="_blank">python.org</a></td><td><code>python --version</code></td></tr>
+    <tr><td>Node.js 22+</td><td><a href="https://nodejs.org/" target="_blank">nodejs.org</a></td><td><code>node --version</code></td></tr>
+    <tr><td>Git</td><td><a href="https://git-scm.com/" target="_blank">git-scm.com</a></td><td><code>git --version</code></td></tr>
+    <tr><td>Docker Desktop</td><td><a href="https://www.docker.com/products/docker-desktop/" target="_blank">docker.com</a></td><td><code>docker --version</code></td></tr>
+    <tr><td>VS Code（推荐）</td><td><a href="https://code.visualstudio.com/" target="_blank">code.visualstudio.com</a></td><td>—</td></tr>
+  </table>
+
+  <h3>第一步：克隆仓库</h3>
+  <pre><code><span class="cmt"># 打开终端（PowerShell 或 CMD），运行：</span>
+git clone https://github.com/zhufanglin/puiying-ai-apple.git
+cd puiying-ai-apple</code></pre>
+
+  <h3>第二步：启动数据库（必须）</h3>
+  <pre><code><span class="cmt"># 启动 PostgreSQL + Redis（一直开着别关）</span>
+docker-compose up -d db redis
+
+<span class="cmt"># 验证数据库已启动</span>
+docker-compose ps
+<span class="cmt"># 看到 db 和 redis 状态是 "Up" 就对了</span></code></pre>
+
+  <h3>第三步：安装后端依赖</h3>
+  <pre><code><span class="cmt"># 进入 API 目录</span>
+cd apps\api
+
+<span class="cmt"># 创建虚拟环境</span>
+python -m venv .venv
+
+<span class="cmt"># 激活虚拟环境</span>
+<span class="cmt"># Windows:</span>
+.venv\Scripts\activate
+<span class="cmt"># Mac/Linux:</span>
+<span class="cmt"># source .venv/bin/activate</span>
+
+<span class="cmt"># 安装依赖（需要几分钟）</span>
+pip install -r requirements.txt
+
+<span class="cmt"># 配置环境变量</span>
+copy ..\..\.env.example .env
+
+<span class="cmt"># 数据库迁移</span>
+alembic upgrade head
+
+<span class="cmt"># 导入种子数据</span>
+python scripts\seed_demo_data.py
+
+<span class="cmt"># 启动 API 服务</span>
+uvicorn app.main:app --reload --port 8000</code></pre>
+
+  <div class="alert alert-success">
+    <strong>✅ 验证：</strong>浏览器打开 <a href="http://localhost:8000/docs" target="_blank">http://localhost:8000/docs</a>，看到 Swagger 页面就成功了。
+  </div>
+
+  <h3>第四步：安装前端依赖</h3>
+  <pre><code><span class="cmt"># 新开一个终端，进入 web 目录</span>
+cd apps\web
+
+<span class="cmt"># 安装</span>
+npm install
+
+<span class="cmt"># 启动开发服务器</span>
+npm run dev</code></pre>
+
+  <div class="alert alert-success">
+    <strong>✅ 验证：</strong>浏览器打开 <a href="http://localhost:3000/dashboard/apple" target="_blank">http://localhost:3000/dashboard/apple</a>，看到 Dashboard 页面就成功了。
+  </div>
+</section>
+
+<!-- ====== 4 ====== -->
+<section id="s4">
+  <h2>4. 项目结构速览</h2>
+
+  <pre><code>puiying-ai-apple/
+├── docker-compose.yml          <span class="cmt">← 一键启动数据库</span>
+├── .env.example                <span class="cmt">← 环境变量模板</span>
+│
+├── apps/api/                   <span class="cmt">← 后端（FastAPI）</span>
+│   ├── app/
+│   │   ├── main.py             <span class="cmt">← 入口，注册路由在这里</span>
+│   │   ├── core/               <span class="cmt">← 🔒 底座：配置/JWT/权限（别改）</span>
+│   │   ├── db/                 <span class="cmt">← 🔒 底座：数据库会话（别改）</span>
+│   │   ├── common/             <span class="cmt">← 🔒 底座：通用错误/分页（别改）</span>
+│   │   └── modules/
+│   │       ├── accounts/       <span class="cmt">← 🔒 底座：用户/角色/权限表</span>
+│   │       ├── files/          <span class="cmt">← 🔒 底座：文件管理表</span>
+│   │       ├── ocr/            <span class="cmt">← 🔒 底座：OCR 任务表</span>
+│   │       ├── ai/             <span class="cmt">← 🔒 底座：AI 任务表</span>
+│   │       ├── audit/          <span class="cmt">← 🔒 底座：审计日志表</span>
+│   │       ├── approvals/      <span class="cmt">← 🔒 底座：审批表</span>
+│   │       └── apple/
+│   │           ├── awards/     <span class="cmt">← 👤 同学2：models.py + router.py + service.py</span>
+│   │           ├── finance/    <span class="cmt">← 👤 同学3：models.py + router.py + service.py</span>
+│   │           ├── assets/     <span class="cmt">← 👤 同学3：models.py + router.py + service.py</span>
+│   │           └── students/   <span class="cmt">← 👤 同学4：models.py + router.py + service.py</span>
+│   └── requirements.txt
+│
+├── apps/web/                   <span class="cmt">← 前端（Next.js）</span>
+│   ├── app/(dashboard)/dashboard/apple/
+│   │   ├── page.tsx            <span class="cmt">← 📊 总览页（已写好）</span>
+│   │   ├── awards/             <span class="cmt">← 👤 同学2：奖状页面</span>
+│   │   ├── finance/            <span class="cmt">← 👤 同学3：财务页面</span>
+│   │   ├── assets/             <span class="cmt">← 👤 同学3：资产页面</span>
+│   │   └── students/           <span class="cmt">← 👤 同学4：学生页面</span>
+│   └── components/
+│       ├── ui/                 <span class="cmt">← 📦 11 个通用组件（直接用）</span>
+│       └── modules/apple/      <span class="cmt">← 👤 你自己写弹窗组件</span>
+│
+├── workers/ocr_worker/         <span class="cmt">← 👤 同学4：Celery Worker</span>
+└── docs/                       <span class="cmt">← 👤 同学5：11份文档</span></code></pre>
+
+  <div class="alert alert-info">
+    <strong>🔒 = 底座代码，别改。👤 = 你负责写的目录。</strong>
+  </div>
+</section>
+
+<!-- ====== 5 ====== -->
+<section id="s5">
+  <h2>5. 框架怎么用（核心规则）</h2>
+
+  <h3>5.1 API 返回格式——全部统一</h3>
+  <p>所有接口返回的 JSON 格式必须是这样：</p>
+  <pre><code><span class="cmt">// 成功</span>
+{<span class="str">"code"</span>: 0, <span class="str">"message"</span>: <span class="str">"ok"</span>, <span class="str">"data"</span>: { ... }}
+
+<span class="cmt">// 失败</span>
+{<span class="str">"code"</span>: 20001, <span class="str">"message"</span>: <span class="str">"资源不存在"</span>, <span class="str">"data"</span>: null}</code></pre>
+  <p>回到你的路由函数里写：</p>
+  <pre><code><span class="kw">from</span> app.common.schemas <span class="kw">import</span> APIResponse
+
+<span class="kw">return</span> APIResponse(data={...})          <span class="cmt"># 成功</span>
+<span class="kw">return</span> APIResponse(code=20001, message=<span class="str">"没找到"</span>)  <span class="cmt"># 失败</span></code></pre>
+
+  <h3>5.2 数据库——用 Depends 注入</h3>
+  <p>在路由参数里加一行，框架自动给连接、自动 commit、自动 close：</p>
+  <pre><code><span class="kw">from</span> fastapi <span class="kw">import</span> Depends
+<span class="kw">from</span> sqlalchemy.ext.asyncio <span class="kw">import</span> AsyncSession
+<span class="kw">from</span> app.db.session <span class="kw">import</span> get_db
+
+@router.get(<span class="str">"/items"</span>)
+<span class="kw">async</span> <span class="kw">def</span> <span class="fn">list_items</span>(db: AsyncSession = Depends(get_db)):
+    result = <span class="kw">await</span> db.execute(select(MyModel))
+    items = result.scalars().all()
+    <span class="kw">return</span> APIResponse(data=items)</code></pre>
+
+  <h3>5.3 权限——加一行装饰器</h3>
+  <pre><code><span class="kw">from</span> app.core.security <span class="kw">import</span> get_current_user
+<span class="kw">from</span> app.core.permissions <span class="kw">import</span> require_permission, Permissions
+
+@router.get(<span class="str">"/awards"</span>)
+<span class="kw">async</span> <span class="kw">def</span> <span class="fn">list_awards</span>(
+    db: AsyncSession = Depends(get_db),
+    user = Depends(get_current_user),                          <span class="cmt"># 拿当前用户</span>
+    _ = Depends(require_permission(Permissions.AWARDS_READ)),  <span class="cmt"># 检查权限</span>
+):
+    ...</code></pre>
+
+  <p>权限码常量（直接引用，不要手写字符串）：</p>
+  <table>
+    <tr><th>模块</th><th>权限常量</th></tr>
+    <tr><td>A1 奖状</td><td><code>Permissions.AWARDS_READ</code> <code>AWARDS_WRITE</code> <code>AWARDS_DELETE</code> <code>AWARDS_APPROVE</code></td></tr>
+    <tr><td>A2 财务</td><td><code>Permissions.FINANCE_READ</code> <code>FINANCE_WRITE</code> <code>FINANCE_DELETE</code></td></tr>
+    <tr><td>A3 资产</td><td><code>Permissions.ASSETS_READ</code> <code>ASSETS_WRITE</code> <code>ASSETS_DELETE</code> <code>ASSETS_APPROVE</code></td></tr>
+    <tr><td>A4 学生</td><td><code>Permissions.STUDENTS_READ</code> <code>STUDENTS_WRITE</code> <code>STUDENTS_DELETE</code></td></tr>
+  </table>
+
+  <h3>5.4 错误处理——用预设错误码</h3>
+  <pre><code><span class="kw">from</span> app.common.errors <span class="kw">import</span> NOT_FOUND, CONFLICT, raise_error
+
+<span class="kw">if</span> not item:
+    raise_error(*NOT_FOUND)  <span class="cmt"># 自动返回 {"code":20001,"message":"资源不存在"}</span>
+
+<span class="kw">if</span> duplicate:
+    raise_error(*CONFLICT)   <span class="cmt"># 自动返回 {"code":20002,"message":"资源冲突"}</span></code></pre>
+
+  <h3>5.5 文件上传——直接引用 files 表</h3>
+  <pre><code><span class="kw">from</span> app.modules.files.models <span class="kw">import</span> File
+
+new_file = File(
+    filename=<span class="str">"certificate.docx"</span>,
+    stored_path=<span class="str">"uploads/cert_001.docx"</span>,
+    mime_type=<span class="str">"application/vnd.openxmlformats-officedocument.wordprocessingml.document"</span>,
+    size_bytes=102400,
+    module=<span class="str">"awards"</span>,
+    uploaded_by=user.id,
+    entity_type=<span class="str">"certificate"</span>,
+    entity_id=0,
+)
+db.add(new_file)</code></pre>
+
+  <h3>5.6 审计日志——增删改自动记</h3>
+  <pre><code><span class="kw">from</span> app.modules.audit.models <span class="kw">import</span> AuditLog
+
+log = AuditLog(
+    user_id=user.id, username=user.display_name,
+    action=<span class="str">"create"</span>, module=<span class="str">"awards"</span>,
+    entity_type=<span class="str">"award"</span>, entity_id=new_award.id,
+)
+db.add(log)</code></pre>
+
+  <h3>5.7 前端组件——直接用已写好的</h3>
+  <p>11 个通用组件在 <code>components/ui/</code> 下，导入即用：</p>
+  <table>
+    <tr><th>组件</th><th>用途</th><th>示例</th></tr>
+    <tr><td><code>PageHeader</code></td><td>页面标题 + 按钮</td><td><code>&lt;PageHeader title="奖状管理" actions={&lt;button&gt;新建&lt;/button&gt;} /&gt;</code></td></tr>
+    <tr><td><code>DataTable</code></td><td>数据表格（分页内置）</td><td><code>&lt;DataTable columns={cols} data={items} total={total} /&gt;</code></td></tr>
+    <tr><td><code>FilterBar</code></td><td>搜索筛选栏</td><td><code>&lt;FilterBar fields={filters} values={vals} onChange={...} /&gt;</code></td></tr>
+    <tr><td><code>StatsCard</code></td><td>统计数字卡片</td><td><code>&lt;StatsCard label="本月新建" value={12} icon={Award} /&gt;</code></td></tr>
+    <tr><td><code>UploadDropzone</code></td><td>拖拽上传</td><td><code>&lt;UploadDropzone onUpload={handleUpload} /&gt;</code></td></tr>
+    <tr><td><code>TaskStatusBadge</code></td><td>状态标签</td><td><code>&lt;TaskStatusBadge status="completed" /&gt;</code></td></tr>
+    <tr><td><code>AiReviewPanel</code></td><td>AI 分析结果面板</td><td><code>&lt;AiReviewPanel content={aiResult} loading={loading} /&gt;</code></td></tr>
+    <tr><td><code>ConfirmDialog</code></td><td>确认弹窗</td><td><code>&lt;ConfirmDialog open={show} title="确认删除" ... /&gt;</code></td></tr>
+    <tr><td><code>AuditTimeline</code></td><td>审计时间线</td><td><code>&lt;AuditTimeline entries={logs} /&gt;</code></td></tr>
+    <tr><td><code>FormSection</code></td><td>表单分区容器</td><td><code>&lt;FormSection title="基本信息"&gt;...&lt;/FormSection&gt;</code></td></tr>
+    <tr><td><code>EmptyState</code></td><td>空数据占位</td><td><code>&lt;EmptyState icon={Award} title="暂无奖状" /&gt;</code></td></tr>
+  </table>
+
+  <h3>5.8 前端调用 API——用封装好的 api 对象</h3>
+  <pre><code><span class="kw">import</span> { api } <span class="kw">from</span> <span class="str">"@/lib/api"</span>;
+
+<span class="cmt">// GET 请求</span>
+<span class="kw">const</span> res = <span class="kw">await</span> api.get(<span class="str">"/apple/awards?page=1&page_size=20"</span>);
+<span class="cmt">// res = { code: 0, message: "ok", data: { items: [...], total: 50 } }</span>
+
+<span class="cmt">// POST 请求</span>
+<span class="kw">const</span> res = <span class="kw">await</span> api.post(<span class="str">"/apple/awards"</span>, { name: <span class="str">"三好学生"</span> });
+
+<span class="cmt">// DELETE 请求</span>
+<span class="kw">await</span> api.delete(<span class="str">"/apple/awards/123"</span>);</code></pre>
+  <p><strong>不需要手动传 token</strong>——<code>api</code> 对象自动从 <code>localStorage</code> 读取 JWT 加到 Header。</p>
+</section>
+
+<!-- ====== 6 ====== -->
+<section id="s6">
+  <h2>6. 后端开发模板（照着写）</h2>
+  <p>以 A1 奖状模块为例，你需要创建 3 个文件：</p>
+
+  <h3>① models.py —— 数据库表</h3>
+  <pre><code><span class="cmt"># apps/api/app/modules/apple/awards/models.py</span>
+<span class="kw">from</span> typing <span class="kw">import</span> Optional
+<span class="kw">from</span> sqlalchemy <span class="kw">import</span> String, Text, ForeignKey
+<span class="kw">from</span> sqlalchemy.orm <span class="kw">import</span> Mapped, mapped_column
+<span class="kw">from</span> app.db.base <span class="kw">import</span> Base, TimestampMixin
+
+<span class="kw">class</span> <span class="fn">Award</span>(Base, TimestampMixin):
+    __tablename__ = <span class="str">"awards"</span>
+
+    name: Mapped[str] = mapped_column(String(200), comment=<span class="str">"奖状名称"</span>)
+    template_path: Mapped[str] = mapped_column(String(500), comment=<span class="str">"模板路径"</span>)
+    created_by: Mapped[int] = mapped_column(comment=<span class="str">"创建人"</span>)
+    <span class="cmt"># id / created_at / updated_at 自动继承自 TimestampMixin</span></code></pre>
+
+  <h3>② router.py —— API 路由</h3>
+  <pre><code><span class="cmt"># apps/api/app/modules/apple/awards/router.py</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> APIRouter, Depends
+<span class="kw">from</span> sqlalchemy <span class="kw">import</span> select
+<span class="kw">from</span> sqlalchemy.ext.asyncio <span class="kw">import</span> AsyncSession
+<span class="kw">from</span> app.common.schemas <span class="kw">import</span> APIResponse
+<span class="kw">from</span> app.common.errors <span class="kw">import</span> NOT_FOUND, raise_error
+<span class="kw">from</span> app.core.security <span class="kw">import</span> get_current_user
+<span class="kw">from</span> app.core.permissions <span class="kw">import</span> require_permission, Permissions
+<span class="kw">from</span> app.db.session <span class="kw">import</span> get_db
+<span class="kw">from</span> app.modules.accounts.models <span class="kw">import</span> User
+<span class="kw">from</span> .models <span class="kw">import</span> Award
+
+router = APIRouter()
+
+@router.get(<span class="str">""</span>)
+<span class="kw">async</span> <span class="kw">def</span> <span class="fn">list_awards</span>(
+    db: AsyncSession = Depends(get_db),
+    user = Depends(get_current_user),
+    _ = Depends(require_permission(Permissions.AWARDS_READ)),
+    page: int = 1, page_size: int = 20,
+):
+    result = <span class="kw">await</span> db.execute(
+        select(Award).offset((page-1)*page_size).limit(page_size)
+    )
+    items = result.scalars().all()
+    <span class="kw">return</span> APIResponse(data={ <span class="str">"items"</span>: items, <span class="str">"page"</span>: page })
+
+@router.get(<span class="str">"/{award_id}"</span>)
+<span class="kw">async</span> <span class="kw">def</span> <span class="fn">get_award</span>(award_id: int, db: AsyncSession = Depends(get_db)):
+    result = <span class="kw">await</span> db.execute(select(Award).where(Award.id == award_id))
+    item = result.scalar_one_or_none()
+    <span class="kw">if</span> not item:
+        raise_error(*NOT_FOUND)
+    <span class="kw">return</span> APIResponse(data=item)</code></pre>
+
+  <h3>③ 注册路由到 main.py</h3>
+  <p>写完 router.py 后，去 <code>apps/api/app/main.py</code> 找到对应注释，取消注释：</p>
+  <pre><code><span class="cmt"># 原来是被注释掉的：</span>
+<span class="cmt"># from app.modules.apple.awards.router import router as awards_router</span>
+<span class="cmt"># app.include_router(awards_router, prefix=..., tags=["Apple-奖状奖学金"])</span>
+
+<span class="cmt"># 取消注释（去掉开头的 #）变成：</span>
+<span class="kw">from</span> app.modules.apple.awards.router <span class="kw">import</span> router <span class="kw">as</span> awards_router
+app.include_router(awards_router, prefix=<span class="str">"/api/v1/apple/awards"</span>, tags=[<span class="str">"Apple-奖状奖学金"</span>])</code></pre>
+</section>
+
+<!-- ====== 7 ====== -->
+<section id="s7">
+  <h2>7. 前端开发模板（照着写）</h2>
+
+  <h3>列表页示例（替换占位页面）</h3>
+  <pre><code><span class="cmt">// apps/web/app/(dashboard)/dashboard/apple/awards/page.tsx</span>
+<span class="str">"use client"</span>;
+
+<span class="kw">import</span> { useState, useEffect } <span class="kw">from</span> <span class="str">"react"</span>;
+<span class="kw">import</span> { Plus } <span class="kw">from</span> <span class="str">"lucide-react"</span>;
+<span class="kw">import</span> PageHeader <span class="kw">from</span> <span class="str">"@/components/ui/PageHeader"</span>;
+<span class="kw">import</span> DataTable, { Column } <span class="kw">from</span> <span class="str">"@/components/ui/DataTable"</span>;
+<span class="kw">import</span> FilterBar <span class="kw">from</span> <span class="str">"@/components/ui/FilterBar"</span>;
+<span class="kw">import</span> StatsCard <span class="kw">from</span> <span class="str">"@/components/ui/StatsCard"</span>;
+<span class="kw">import</span> EmptyState <span class="kw">from</span> <span class="str">"@/components/ui/EmptyState"</span>;
+<span class="kw">import</span> { api } <span class="kw">from</span> <span class="str">"@/lib/api"</span>;
+<span class="kw">import</span> { Award } <span class="kw">from</span> <span class="str">"lucide-react"</span>;
+
+<span class="kw">interface</span> AwardItem {
+  id: number; name: string; template_path: string; created_at: string;
+}
+
+<span class="kw">const</span> columns: Column&lt;AwardItem&gt;[] = [
+  { key: <span class="str">"id"</span>, header: <span class="str">"ID"</span>, width: <span class="str">"80px"</span> },
+  { key: <span class="str">"name"</span>, header: <span class="str">"奖状名称"</span> },
+  { key: <span class="str">"created_at"</span>, header: <span class="str">"创建时间"</span> },
+];
+
+<span class="kw">export default function</span> <span class="fn">AwardsPage</span>() {
+  <span class="kw">const</span> [data, setData] = useState&lt;AwardItem[]&gt;([]);
+  <span class="kw">const</span> [total, setTotal] = useState(0);
+  <span class="kw">const</span> [loading, setLoading] = useState(true);
+
+  <span class="kw">const</span> fetchData = <span class="kw">async</span> (page = 1) => {
+    setLoading(true);
+    <span class="kw">const</span> res = <span class="kw">await</span> api.get&lt;{ items: AwardItem[]; total: number }&gt;(
+      `/apple/awards?page=${page}&page_size=20`
+    );
+    setData(res.data?.items || []);
+    setTotal(res.data?.total || 0);
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchData(); }, []);
+
+  <span class="kw">return</span> (
+    &lt;div&gt;
+      &lt;PageHeader
+        title=<span class="str">"奖状奖学金"</span>
+        subtitle=<span class="str">"管理奖状模板、生成证书、审批流程"</span>
+        actions={&lt;button className=<span class="str">"px-4 py-2 bg-blue-500 text-white rounded-lg"</span>&gt;
+          &lt;Plus size={16} /&gt; 新建奖状
+        &lt;/button&gt;}
+      /&gt;
+
+      &lt;div className=<span class="str">"grid grid-cols-3 gap-4 mb-6"</span>&gt;
+        &lt;StatsCard label=<span class="str">"奖状模板"</span> value={total} icon={Award} color=<span class="str">"text-blue-600"</span> /&gt;
+      &lt;/div&gt;
+
+      {data.length &gt; 0 ? (
+        &lt;DataTable columns={columns} data={data} total={total} loading={loading} /&gt;
+      ) : (
+        &lt;EmptyState icon={Award} title=<span class="str">"暂无奖状"</span> description=<span class="str">"点击右上角新建"</span> /&gt;
+      )}
+    &lt;/div&gt;
+  );
+}</code></pre>
+
+  <h3>弹窗组件示例（放在 components/modules/apple/）</h3>
+  <pre><code><span class="cmt">// apps/web/components/modules/apple/AwardsScriptDialog.tsx</span>
+<span class="str">"use client"</span>;
+
+<span class="kw">import</span> { useState } <span class="kw">from</span> <span class="str">"react"</span>;
+<span class="kw">import</span> { X } <span class="kw">from</span> <span class="str">"lucide-react"</span>;
+<span class="kw">import</span> AiReviewPanel <span class="kw">from</span> <span class="str">"@/components/ui/AiReviewPanel"</span>;
+<span class="kw">import</span> { api } <span class="kw">from</span> <span class="str">"@/lib/api"</span>;
+
+<span class="kw">interface Props</span> { awardId: number; onClose: () => void; }
+
+<span class="kw">export default function</span> <span class="fn">AwardsScriptDialog</span>({ awardId, onClose }: Props) {
+  <span class="kw">const</span> [aiContent, setAiContent] = useState(<span class="str">""</span>);
+  <span class="kw">const</span> [loading, setLoading] = useState(false);
+
+  <span class="kw">const</span> handleGenerate = <span class="kw">async</span> () => {
+    setLoading(true);
+    <span class="kw">const</span> res = <span class="kw">await</span> api.post&lt;{ text: string }&gt;(<span class="str">"/apple/awards/generate-script"</span>, { awardId });
+    setAiContent(res.data?.text || <span class="str">""</span>);
+    setLoading(false);
+  };
+
+  <span class="kw">return</span> (
+    &lt;div className=<span class="str">"fixed inset-0 z-50 flex items-center justify-center bg-black/30"</span>&gt;
+      &lt;div className=<span class="str">"bg-white rounded-xl p-6 w-full max-w-lg"</span>&gt;
+        &lt;div className=<span class="str">"flex items-center justify-between mb-4"</span>&gt;
+          &lt;h3 className=<span class="str">"text-lg font-semibold"</span>&gt;AI 奖状评语&lt;/h3&gt;
+          &lt;button onClick={onClose}&gt;&lt;X size={20} /&gt;&lt;/button&gt;
+        &lt;/div&gt;
+        &lt;button onClick={handleGenerate} className=<span class="str">"w-full py-2 bg-purple-500 text-white rounded-lg"</span>&gt;
+          生成 AI 评语
+        &lt;/button&gt;
+        {aiContent &amp;&amp; &lt;AiReviewPanel content={aiContent} loading={loading} /&gt;}
+      &lt;/div&gt;
+    &lt;/div&gt;
+  );
+}</code></pre>
+</section>
+
+<!-- ====== 8 ====== -->
+<section id="s8">
+  <h2>8. 提交与日常流程</h2>
+
+  <h3>每天的工作流</h3>
+  <ol class="steps">
+    <li>
+      <strong>拉最新代码</strong>
+      <pre><code>git pull origin main</code></pre>
+    </li>
+    <li>
+      <strong>创建你的分支</strong>
+      <pre><code>git checkout -b awards-list-page</code></pre>
+    </li>
+    <li>
+      <strong>写代码</strong>（在你的模块目录里）<br>
+      <span style="color: var(--c-muted);">后端：写 models.py + router.py<br>前端：改 page.tsx + 写弹窗组件</span>
+    </li>
+    <li>
+      <strong>本地测试</strong>
+      <pre><code><span class="cmt"># API 测试：浏览器打开 http://localhost:8000/docs 直接调接口</span>
+<span class="cmt"># 前端测试：浏览器打开 http://localhost:3000 看页面效果</span></code></pre>
+    </li>
+    <li>
+      <strong>提交代码</strong>
+      <pre><code>git add apps/api/app/modules/apple/awards/
+git commit -m "[awards] feat: add award list API and frontend page"
+git push origin awards-list-page</code></pre>
+    </li>
+    <li>
+      <strong>到 GitHub 创建 Pull Request</strong><br>
+      <span style="color: var(--c-muted);">打开 https://github.com/zhufanglin/puiying-ai-apple → Pull requests → New → 选你的分支 → 写清楚改了什么 → 同学1 review</span>
+    </li>
+  </ol>
+
+  <h3>Commit 信息规范</h3>
+  <pre><code><span class="cmt"># 格式：[模块] 类型：描述</span>
+[awards] feat: add certificate template CRUD
+[awards] fix: correct approval status enum
+[finance] feat: add receipt OCR upload endpoint
+[assets] feat: add asset depreciation calculation
+[students] feat: add leave request API
+[docs] feat: add module awards design doc</code></pre>
+
+  <h3>每天的时间节点</h3>
+  <table>
+    <tr><th>时间</th><th>做什么</th></tr>
+    <tr><td>09:00</td><td>Kickoff 站会，领任务</td></tr>
+    <tr><td>09:00-12:00</td><td>写代码，遇到阻塞上报同学1</td></tr>
+    <tr><td>12:00</td><td>同学1 巡视进度</td></tr>
+    <tr><td>13:00-16:00</td><td>继续写代码</td></tr>
+    <tr><td>16:00</td><td>同学1 第二次巡视</td></tr>
+    <tr><td>18:00</td><td>站会，汇报完成度 + 提交代码</td></tr>
+  </table>
+</section>
+
+<!-- ====== 9 ====== -->
+<section id="s9">
+  <h2>9. 常见问题</h2>
+
+  <div class="alert alert-warn">
+    <strong>Q：Docker 启动后数据库连不上？</strong><br>
+    A：等 10 秒，PostgreSQL 需要初始化。用 <code>docker-compose ps</code> 确认状态是 "Up (healthy)" 而不是 "starting"。
+  </div>
+
+  <div class="alert alert-warn">
+    <strong>Q：pip install 报错？</strong><br>
+    A：确保已经激活虚拟环境（终端前面有 <code>(.venv)</code>）。如果是 PaddleOCR 装不上，先跳过 OCR 功能，用 mock 数据。
+  </div>
+
+  <div class="alert alert-warn">
+    <strong>Q：路由注册后 404？</strong><br>
+    A：检查 <code>main.py</code> 里对应那行注释是否已取消。重启 uvicorn。
+  </div>
+
+  <div class="alert alert-warn">
+    <strong>Q：前端 API 调用报 CORS 错误？</strong><br>
+    A：开发期 CORS 已全开，检查 <code>NEXT_PUBLIC_API_URL</code> 是否正确（默认 <code>http://localhost:8000</code>）。
+  </div>
+
+  <div class="alert alert-warn">
+    <strong>Q：我不确定某个功能怎么写？</strong><br>
+    A：1) 先看本文档的模板。2) 看 <code>apps/api/app/modules/accounts/models.py</code> 和 <code>router.py</code> 作为参考示例。3) 问同学1。
+  </div>
+
+  <div class="alert alert-warn">
+    <strong>Q：种子数据里管理员账号是什么？</strong><br>
+    A：<code>admin</code> / <code>admin123</code>。可以用这个账号登录测试。
+  </div>
+
+  <div class="alert alert-danger">
+    <strong>Q：我改了 core/ 或 db/ 里的代码，全坏了怎么办？</strong><br>
+    A：<code>git checkout -- apps/api/app/core/</code> 恢复。千万不要改底座代码！
+  </div>
+</section>
+
+<footer>
+  <p>培英 AI 数智化平台 · Apple 子系统 · 组员上手指南 v1.0</p>
+  <p style="margin-top:6px;">有疑问找同学1 · 仓库地址 <a href="https://github.com/zhufanglin/puiying-ai-apple">github.com/zhufanglin/puiying-ai-apple</a></p>
+</footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,130 @@
+# ==================== Node.js ====================
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Diagnostic reports
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage
+coverage
+*.lcov
+.nyc_output
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Optional cache
+.npm
+.eslintcache
+.stylelintcache
+.node_repl_history
+
+# dotenv
+.env
+.env.*
+!.env.example
+
+# Next.js
+.next
+out
+
+# Build output
+dist
+.output
+*.tgz
+
+# pnpm / yarn
+.pnpm-store
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# Vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+.vite/
+
+# Turbo
+.turbo
+
+# ==================== Python ====================
+# Byte-compiled
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Distribution / packaging
+*.egg-info/
+*.egg
+dist/
+build/
+eggs/
+sdist/
+
+# Unit test / coverage
+htmlcov/
+.coverage
+.coverage.*
+.tox/
+.nox/
+pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# Alembic
+alembic/versions/*.pyc
+
+# ==================== IDE ====================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ==================== OS ====================
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ==================== Docker ====================
+# Keep docker-compose.yml, ignore data volumes
+docker-volumes/
+
+# ==================== Uploads ====================
+uploads/*
+!uploads/.gitkeep
+media/*
+!media/.gitkeep
+next-env.d.ts
