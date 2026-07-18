@@ -48,7 +48,7 @@ docker compose up -d --build web
 
 OCR 完整配置、接口和测试方法见 [`docs/06-ocr-worker.md`](docs/06-ocr-worker.md)。百度密钥只应配置在根目录 `.env` 或部署平台密钥管理中，不得使用 `NEXT_PUBLIC_*` 暴露给浏览器。
 
-收据上传弹窗可选择 DeepSeek Prompt 或仅本地规则。DeepSeek Key 只保存在当前浏览器标签页会话，并通过单次请求头使用；不会写入数据库、日志、Redis、Celery 或 Git。启用后只发送 OCR 文字，不发送原图，所有候选字段仍须人工确认。
+收据与资产发票上传弹窗均可选择 DeepSeek Prompt 或仅本地规则，并分别使用收据、资产发票专用 Prompt。DeepSeek Key 只保存在当前浏览器标签页会话，并通过单次请求头使用；不会写入数据库、日志、Redis、Celery 或 Git。启用后只发送 OCR 文字，不发送原图，所有候选字段仍须人工确认；多项或数量不明确的资产发票不会自动折叠成一项资产。
 
 ## 项目结构
 

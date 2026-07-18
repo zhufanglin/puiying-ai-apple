@@ -276,6 +276,7 @@
 | POST | `/api/v1/apple/assets/stocktake` | 盘点报告 | ASSETS_READ |
 | POST | `/api/v1/apple/assets/{id}/writeoff` | 注销资产 | ASSETS_APPROVE |
 | POST | `/api/v1/apple/assets/print-labels` | 批量打印标签 | ASSETS_READ |
+| POST | `/api/v1/ocr/invoice/structure` | OCR 后的资产发票字段结构化（可选 DeepSeek） | 登录用户 |
 
 ---
 
@@ -294,17 +295,84 @@ Celery ocr.process(job_id):
   1. 查 files 表获取共享卷文件路径
   2. 更新 OCRJob (pending → processing)
   3. 调用百度手写文字识别 → raw_text
-  4. 按 receipt_extract_zh_hk.md 契约结构化
-  5. 写入 ocr_jobs.result_json 并标记 completed
-  6. 前端轮询返回结构化字段:
-     {amount, currency:"HKD", date, payer, purpose, confidence, warnings, raw_text}
+  4. 写入 OCR 行、置信度和 raw_text，并标记 completed
+  5. 前端轮询取得 OCR 结果
+  ↓
+用户启用 DeepSeek 时：
+  POST /api/v1/ocr/receipt/structure
+  → receipt_extract_zh_hk.md
+  → 白名单归一化 + OCR 原文证据校验
+  → {amount, currency, date, payer, purpose, confidence, warnings, raw_text}
   ↓
 前端展示结果 → 用户确认/修正 → POST /income（带 file_id）
 
-API/Worker/百度不可用时 → 浏览器 Tesseract.js 回退并提示用户
+用户选择「仅本地规则」或 DeepSeek 不可用时 → 浏览器保守解析并提示回退原因
+API/Worker/百度不可用时 → 浏览器 Tesseract.js 回退，再执行所选结构化方式
 ```
 
-### 8.2 报价单分析流程
+> OCR Worker 只负责调用百度 OCR、保存文字及任务状态，不在 Celery 任务内调用 DeepSeek。DeepSeek 是浏览器取得 OCR 文字后发起的独立同步 API。
+
+### 8.2 资产发票 OCR 与字段结构化流程
+
+```text
+用户在资产盘点页上传发票
+  ↓
+POST /api/v1/files/upload（module=assets, entity_type=invoice）
+  ↓
+POST /api/v1/ocr/jobs（module=assets, job_type=invoice）
+  ↓
+Celery ocr.process(job_id)
+  → 百度 general_basic 只提取文字、行及置信度
+  → 写入 ocr_jobs.result_text / result_json
+  → 前端轮询取得 OCR 结果
+  ↓
+用户选择字段结构化方式：
+  ├─ DeepSeek
+  │   → POST /api/v1/ocr/invoice/structure
+  │   → invoice_asset_extract_zh_hk.md
+  │   → JSON 白名单归一化
+  │   → OCR 原文证据校验
+  │   → 最多一次格式重试
+  └─ 仅本地规则
+      → 浏览器保守解析，不发送 OCR 文字给模型
+  ↓
+预填候选字段 → 用户对照原图复核/修改 → 补充资产地点 → POST /api/v1/apple/assets
+```
+
+同步结构化响应只允许以下候选字段：
+
+```json
+{
+  "fields": {
+    "asset_name": "筆記本電腦",
+    "category": "IT設備",
+    "amount": 3280.0,
+    "currency": "HKD",
+    "purchase_date": "2026-07-15",
+    "vendor": "示例供应商有限公司",
+    "invoice_no": "INV-20260715-01",
+    "multiple_items": false
+  },
+  "confidence": "medium",
+  "warnings": [],
+  "raw_text": "由服务端补回的 OCR 原文"
+}
+```
+
+字段回填遵守以下安全规则：
+
+- `asset_name` 必须能在 OCR 原文中找到对应货品描述；类别只允许映射到系统白名单，不能由模型自由增加。
+- `amount` 表示整张发票的购买总额，优先采用 `Grand Total`、`Invoice Total`、`Total Amount`，其次才是普通 `Total`、`总额` 或 `合计`；`Amount Due`、`Balance Due` 是未付余额，只有完全没有发票总额且没有已付款、订金或贷项上下文时才可保守采用。小计、税款、折扣、订金和单价不能当作资产金额；Credit Note／Memo／Advice、贷项通知、半角或全角括号会计负数、前后置负号及 `CR` 金额不得转成正数回填。
+- `currency` 必须有 `HKD`、`HK$`、`港币` 或 `港元` 证据；裸 `$` 不足以确认港币。
+- `purchase_date` 优先采用明确的发票日期；到期日、送货日和付款日不能代替。日月均不大于 12 的斜杠日期视为有歧义并留空。
+- `vendor` 只能是卖方/供应商；`Bill To`、`Sold To`、`Ship To`、客户、买方或收货人不能误填为供应商。
+- `invoice_no` 只能来自发票编号标签附近，不得当作金额或系统资产编号。
+- 只有明细区恰好一项且数量明确为 1 时才允许单项预填；检测到多项、数量大于 1 或缺少可靠数量证据时，`multiple_items=true`，系统不把整张发票总额自动回填到一项资产，也不自动确定单一资产名称/类别；前端以低置信度警告用户逐项拆分登记。
+- 模型输出缺乏原文证据、字段冲突或格式异常时，对应字段置空并降低 `confidence`。所有结果都必须人工确认后才能入库，资产地点始终由用户填写。
+
+DeepSeek 模式下，API Key 只保存在当前浏览器会话，并通过 `X-AI-API-Key` 请求头发送给同步接口；不进入 JSON body、数据库、日志、Redis、Celery 或 Git。只发送 OCR 文字，不发送发票原图。用户可随时选择「仅本地规则」。DeepSeek 鉴权、余额、限流或网络失败时不进行格式重试；JSON 格式错误最多重试一次，之后自动回退本地保守规则并显示原因。
+
+### 8.3 报价单分析流程
 
 ```
 POST /quotations/analyze
@@ -317,7 +385,7 @@ quotation_analyze():
   3. 返回分析报告 + 统计摘要
 ```
 
-### 8.3 OCR 引擎架构
+### 8.4 OCR 引擎架构
 
 **双层支持**（按优先级）:
 1. **百度智能云 OCR**（Worker 主引擎）— `workers/ocr_worker/services/ocr_engine.py`
@@ -393,6 +461,9 @@ db.add(log)
 | 文件不存在 | 20001 | 返回 NOT_FOUND + 提示 |
 | OCR 引擎不可用 | 40002 | 回退到浏览器端 Tesseract.js |
 | OCR 识别信心低 | — | warnings 说明 + confidence=low |
+| DeepSeek 不可用 | 502/上游错误 | 显示原因并回退本地保守规则，保留 OCR 原文供复核 |
+| 发票包含多项、数量大于 1 或数量证据缺失 | — | 不自动回填单一资产，提示逐项拆分登记 |
+| 发票字段缺乏原文证据 | — | 清空对应候选值 + confidence=low + warning |
 | 报价单格式异常 | 40001 | 跳过该项 + warning 记录 |
 | 资产找不到 | 20001 | 状态改为 missing |
 | 资产重复注销 | 40005 | 提示"已注销，无需重复操作" |
@@ -409,7 +480,10 @@ db.add(log)
 - [ ] Finance 页面：3 个 Tab 切换正常，筛选可用
 - [ ] Assets 页面：3 个 Tab 切换正常，按地点分组正确
 - [ ] 上传收据 → OCR 识别 → 字段自动填充 → 确认入账全流程走通
-- [ ] 上传发票 → OCR 识别 → 资产自动填充 → 登记入库全流程走通
+- [ ] 上传发票 → 百度 OCR 提字 → DeepSeek 或本地规则结构化 → 人工复核 → 登记入库全流程走通
+- [ ] DeepSeek 模式只发送 OCR 原文，Key 仅在会话与 `X-AI-API-Key` 请求头内存在
+- [ ] 「仅本地规则」无需模型 Key，可完成保守预填并允许人工修改
+- [ ] 多行、多数量或数量证据缺失的发票不会把整张总额自动登记为一项资产
 - [ ] 报价单 AI 分析：单一报价黄底、未采纳最低红底高亮正确
 - [ ] 资产搬移：地点更新 + 搬移历史记录正确
 - [ ] 资产注销：状态变更 + 原因记录正确
@@ -421,6 +495,7 @@ db.add(log)
 - [ ] finance 模块测试 ≥ 4 个
 - [ ] assets 模块测试 ≥ 4 个
 - [ ] OCR Worker 测试 ≥ 1 个
+- [ ] 资产发票结构化测试覆盖白名单归一化、原文证据、格式重试、保守回退与 Key 脱敏
 
 ### 代码验收（design.md §11.4）
 
