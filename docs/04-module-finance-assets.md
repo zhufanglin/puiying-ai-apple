@@ -288,20 +288,20 @@
   ↓
 POST /api/v1/files/upload → files 表记录
   ↓
-POST /api/v1/apple/finance/income (带 attachment_file_id)
+POST /api/v1/ocr/jobs (file_id, module=finance, job_type=receipt)
   ↓
-receipt_ocr_analyze():
-  1. 查 files 表获取文件路径
-  2. 创建 OCRJob (status=pending)
-  3. 提交 Celery process_receipt_ocr(job_id)
-     Worker 执行:
-     ├─ OCR 引擎 (PaddleOCR/Tesseract) 识别 → raw_text
-     ├─ receipt_extract_zh_hk.md Prompt 结构化
-     └─ 写入 ocr_jobs.result_json
-  4. 返回结构化字段:
+Celery ocr.process(job_id):
+  1. 查 files 表获取共享卷文件路径
+  2. 更新 OCRJob (pending → processing)
+  3. 调用百度手写文字识别 → raw_text
+  4. 按 receipt_extract_zh_hk.md 契约结构化
+  5. 写入 ocr_jobs.result_json 并标记 completed
+  6. 前端轮询返回结构化字段:
      {amount, currency:"HKD", date, payer, purpose, confidence, warnings, raw_text}
   ↓
-前端展示结果 → 用户确认/修正 → 入账
+前端展示结果 → 用户确认/修正 → POST /income（带 file_id）
+
+API/Worker/百度不可用时 → 浏览器 Tesseract.js 回退并提示用户
 ```
 
 ### 8.2 报价单分析流程
@@ -319,19 +319,15 @@ quotation_analyze():
 
 ### 8.3 OCR 引擎架构
 
-**双引擎支持**（按优先级）:
-1. **PaddleOCR** (文档指定主引擎) — `workers/ocr_worker/services/ocr_engine.py`
-2. **Tesseract** (pytesseract) — 轻量级回退
-3. **Tesseract.js** (浏览器端) — `apps/web/lib/ocr-engine.ts`
+**双层支持**（按优先级）:
+1. **百度智能云 OCR**（Worker 主引擎）— `workers/ocr_worker/services/ocr_engine.py`
+2. **Tesseract.js**（浏览器端回退）— `apps/web/lib/ocr-engine.ts`
 
 **引擎选择逻辑**:
-```python
-if _has_paddleocr():
-    return await _paddleocr_recognize(file_path)
-elif _has_tesseract():
-    return await _tesseract_recognize(file_path)
-else:
-    raise RuntimeError("未安装 OCR 引擎")
+```text
+receipt → 百度 handwriting
+invoice/certificate/document → 百度 general_basic
+服务器链路失败 → 浏览器 Tesseract.js
 ```
 
 ---

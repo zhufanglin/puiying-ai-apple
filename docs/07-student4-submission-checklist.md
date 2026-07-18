@@ -56,17 +56,16 @@
 提交整个 `workers/ocr_worker/`：
 
 - `main.py`：Celery 入口。
-- `tasks.py`：`process_ocr_job` 任务及状态流转。
-- `job_store.py`：`aiJobs`、文件路径和审计写入。
+- `tasks.py`：`process_ocr_job` 任务、数据库状态流转和结构化结果。
 - `cli.py`：单文件 OCR 冒烟测试。
 - `.env.example`：环境变量示例，不含真实密钥。
-- `services/ocr_engine.py`：Direct、百度 OCR、PaddleOCR、Tesseract 适配器。
+- `services/ocr_engine.py`：百度 OCR 鉴权、token 缓存和 HTTP 适配器。
 - `handlers/receipt_handler.py`：收据结构化候选。
 - `handlers/certificate_handler.py`：证明 OCR 候选。
 - `handlers/document_handler.py`：通用文档候选。
 - `handlers/prompt_loader.py`：Prompt 加载器。
 - `tests/test_ocr_worker.py`：Worker 及模拟百度 HTTP 测试。
-- `requirements.txt`、`requirements-paddle.txt`、`Dockerfile`。
+- `requirements.txt`、`Dockerfile`。
 
 部署配套：根目录 `docker-compose.yml` 中的 `redis` 与 `worker` 服务。
 

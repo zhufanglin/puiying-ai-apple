@@ -17,25 +17,35 @@
 - **前端**: Next.js 15 + TypeScript + Tailwind CSS
 - **数据库**: PostgreSQL 16
 - **缓存/队列**: Redis 7
-- **OCR**: PaddleOCR
+- **OCR**: 百度智能云 OCR（Worker 主引擎）+ Tesseract.js（浏览器回退）
 - **容器化**: Docker Compose
 
 ## 快速启动
 
 ```bash
-# 1. 启动所有服务
-docker-compose up -d
+# 1. 复制环境变量，并填写百度 OCR AK/SK
+cp .env.example .env
+# BAIDU_OCR_API_KEY=...
+# BAIDU_OCR_SECRET_KEY=...
 
-# 2. 运行数据库迁移
-docker-compose exec api alembic upgrade head
+# 2. 启动数据库和 Redis
+docker compose up -d db redis
 
-# 3. 导入演示数据
-docker-compose exec api python scripts/seed_demo_data.py
+# 3. 构建 API 与百度 OCR Worker
+docker compose up -d --build api worker
 
-# 4. 访问
+# 4. 运行数据库迁移
+docker compose exec api alembic upgrade head
+
+# 5. 启动前端
+docker compose up -d --build web
+
+# 6. 访问
 # 前端: http://localhost:3000
 # API 文档: http://localhost:8000/docs
 ```
+
+OCR 完整配置、接口和测试方法见 [`docs/06-ocr-worker.md`](docs/06-ocr-worker.md)。百度密钥只应配置在根目录 `.env` 或部署平台密钥管理中，不得使用 `NEXT_PUBLIC_*` 暴露给浏览器。
 
 ## 项目结构
 
