@@ -99,7 +99,9 @@ Excel／图片／文字
   → 审计日志
 ```
 
-四个 Prompt 分别负责奖项提取、收据提取、报价分析和学生证明正文。每个 Prompt 包含模块、输入、JSON Schema、安全限制、示例输入与示例输出。用户选择的大模型 API Key 仍只保存在浏览器会话；Apple API 和 OCR Worker 不接收大模型 Key。百度 OCR 的 AK/SK 则只通过 Worker 服务器环境变量注入，两类凭证分开管理。
+四个 Prompt 分别负责奖项提取、收据提取、报价分析和学生证明正文。每个 Prompt 包含模块、输入、JSON Schema、安全限制、示例输入与示例输出。收据流程支持用户选择 DeepSeek 模型并输入 API Key：Key 保存在浏览器 `sessionStorage`，调用时仅通过 `X-AI-API-Key` 请求头进入同步 API 请求，不写数据库、`AIJob`、日志、Redis 或 Celery；请求结束后后端不保留 Key。百度 OCR 的 AK/SK 则只通过 Worker 服务器环境变量注入，两类凭证分开管理。
+
+启用 DeepSeek 时，系统只发送 OCR 文字、行顺序、坐标和置信度，不发送收据原图。界面必须明确提示文字将交由第三方模型处理，并由学校确认符合隐私政策。模型结果还需经过金额证据、日期、付款人／用途原文证据及 JSON Schema 校验；校验失败的字段清空，不能自动入库。
 
 ## 9. 权限规则
 

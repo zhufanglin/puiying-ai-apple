@@ -18,6 +18,7 @@
 - **数据库**: PostgreSQL 16
 - **缓存/队列**: Redis 7
 - **OCR**: 百度智能云 OCR（Worker 主引擎）+ Tesseract.js（浏览器回退）
+- **AI 结构化**: 用户选择 DeepSeek 模型并输入 Key，使用标准 Prompt 整理 OCR 字段
 - **容器化**: Docker Compose
 
 ## 快速启动
@@ -46,6 +47,8 @@ docker compose up -d --build web
 ```
 
 OCR 完整配置、接口和测试方法见 [`docs/06-ocr-worker.md`](docs/06-ocr-worker.md)。百度密钥只应配置在根目录 `.env` 或部署平台密钥管理中，不得使用 `NEXT_PUBLIC_*` 暴露给浏览器。
+
+收据上传弹窗可选择 DeepSeek Prompt 或仅本地规则。DeepSeek Key 只保存在当前浏览器标签页会话，并通过单次请求头使用；不会写入数据库、日志、Redis、Celery 或 Git。启用后只发送 OCR 文字，不发送原图，所有候选字段仍须人工确认。
 
 ## 项目结构
 

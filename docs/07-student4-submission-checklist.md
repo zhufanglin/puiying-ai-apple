@@ -51,6 +51,14 @@
 
 每个 Prompt 应包含：角色、调用前提、输入契约、唯一 JSON 输出、字段规则、置信度标准、安全限制、自检和示例。
 
+收据 Prompt 的实际调用链同时提交：
+
+- `apps/api/app/modules/ocr/receipt_ai_service.py`：DeepSeek JSON Output、Prompt 加载及原文证据校验。
+- `apps/api/app/modules/ocr/schemas.py`、`router.py`：`POST /api/v1/ocr/receipt/structure`。
+- `apps/api/app/modules/ocr/tests/test_receipt_ai_service.py`：编号误判、幻觉字段及 Key 脱敏测试。
+- `apps/web/lib/receipt-ai.ts`：模型与会话 Key 配置、同步结构化请求。
+- `apps/web/components/modules/apple/UploadReceiptDialog.tsx`：DeepSeek 优先、保守规则回退和人工确认。
+
 ## 3. 必交 OCR Worker
 
 提交整个 `workers/ocr_worker/`：
@@ -85,19 +93,20 @@ cd apps/api
 python -m unittest discover -s app/modules/apple/students/tests -p "test_*.py" -v
 cd ../..
 python -m unittest discover -s workers/ocr_worker/tests -p "test_*.py" -v
-
+cd apps/api
+python -m unittest app.modules.ocr.tests.test_receipt_ai_service -v
+cd ../..
 cd apps/web
 npm run build
 ```
 
 百度真实接口另做冒烟测试：
 
-```powershell
-$env:OCR_ENGINE="baidu"
-$env:BAIDU_OCR_MODE="handwriting"
-$env:BAIDU_OCR_API_KEY="你的API Key"
-$env:BAIDU_OCR_SECRET_KEY="你的Secret Key"
-python -m workers.ocr_worker.cli "C:\path\receipt.jpg" --engine baidu
+```cmd
+set "BAIDU_OCR_API_KEY=你的API Key"
+set "BAIDU_OCR_SECRET_KEY=你的Secret Key"
+set "BAIDU_OCR_RECEIPT_MODE=handwriting"
+python -m workers.ocr_worker.cli "C:\path\receipt.jpg" --job-type receipt
 ```
 
 验收时应展示：
@@ -110,6 +119,7 @@ python -m workers.ocr_worker.cli "C:\path\receipt.jpg" --engine baidu
 6. 在学证明申请及 PDF。
 7. OCR 输出 `needs_review`，低信心字段不自动入库。
 8. 四个 Prompt 的严格 JSON 和不编造规则。
+9. DeepSeek 模型选择和 API Key 输入；收据编号不会误填为金额。
 
 ## 6. 不应提交
 
