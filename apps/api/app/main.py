@@ -57,12 +57,12 @@ app.include_router(auth_router, prefix=settings.API_PREFIX)
 
 # ---- 各模块路由（同学 2/3/4 在自己的 router.py 写完后来这里加一行）----
 
-# from app.modules.apple.awards.router import router as awards_router
+from app.modules.apple.awards.router import router as awards_router
 # from app.modules.apple.finance.router import router as finance_router
 # from app.modules.apple.assets.router import router as assets_router
 from app.modules.apple.students.router import router as students_router
 
-# app.include_router(awards_router, prefix=f"{settings.API_PREFIX}/apple/awards", tags=["Apple-奖状奖学金"])
+app.include_router(awards_router, prefix=f"{settings.API_PREFIX}/apple/awards", tags=["Apple-奖状奖学金"])
 # app.include_router(finance_router, prefix=f"{settings.API_PREFIX}/apple/finance", tags=["Apple-财务收支"])
 # app.include_router(assets_router, prefix=f"{settings.API_PREFIX}/apple/assets", tags=["Apple-资产盘点"])
 app.include_router(students_router)
