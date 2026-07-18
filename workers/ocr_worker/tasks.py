@@ -1,100 +1,103 @@
-"""OCR Worker — Celery 任务定义
+"""数据库驱动的百度 OCR Celery 任务。"""
 
-任务流（严格按文档 §4）:
-    获取文件 → 调用 OCR 引擎 → 调用 AI Prompt → 结构化输出 → 写 ai_jobs 表
-"""
+from __future__ import annotations
 
+import asyncio
+from typing import Any
+
+from workers.ocr_worker.handlers.certificate_handler import extract_certificate_fields
+from workers.ocr_worker.handlers.document_handler import build_document_result
+from workers.ocr_worker.handlers.receipt_handler import extract_receipt_fields
 from workers.ocr_worker.main import app
-from workers.ocr_worker.services.ocr_engine import recognize_file
+from workers.ocr_worker.services.ocr_engine import OcrEngine, OcrResult
 
 
-@app.task(name="ocr.process", bind=True, max_retries=3, default_retry_delay=30)
-def process_ocr_job(self, job_id: int) -> dict:
-    """处理 OCR 任务
+def build_job_result(job_type: str, ocr_result: OcrResult) -> dict[str, Any]:
+    """将 OCR 原文转换为 API 可消费的统一结构。"""
+    ocr_payload = ocr_result.to_dict()
+    if job_type == "receipt":
+        structured = extract_receipt_fields(ocr_result.text, ocr_result.confidence)
+    elif job_type == "certificate":
+        structured = extract_certificate_fields(ocr_result.text, ocr_result.confidence)
+    else:
+        structured = build_document_result(
+            ocr_result.text,
+            ocr_result.confidence,
+            ocr_result.warnings,
+        )
+    return {"ocr": ocr_payload, **structured}
 
-    流程:
-    1. 根据 job_id 查询 ocr_jobs 表获取文件信息
-    2. 更新任务状态为 processing
-    3. 调用 OCR 引擎识别
-    4. 调用 AI Prompt 结构化（见 handlers/）
-    5. 写入结果到 ocr_jobs.result_json
-    6. 更新任务状态为 completed
 
-    Args:
-        job_id: ocr_jobs 表中的任务 ID
-
-    Returns:
-        dict: OCR 结构化结果
-    """
-    import asyncio
+async def _process_job(job_id: int, job_type_override: str | None = None) -> dict[str, Any]:
     from sqlalchemy import select
+
     from app.db.session import SessionLocal
-    from app.modules.ocr.models import OCRJob
     from app.modules.files.models import File
+    from app.modules.ocr.models import OCRJob
 
-    async def _run():
-        async with SessionLocal() as db:
-            # 1. 获取任务
-            result = await db.execute(
-                select(OCRJob).where(OCRJob.id == job_id)
+    async with SessionLocal() as db:
+        result = await db.execute(select(OCRJob).where(OCRJob.id == job_id))
+        job = result.scalar_one_or_none()
+        if not job:
+            raise ValueError(f"OCR 任务 {job_id} 不存在")
+        if job.status == "completed" and isinstance(job.result_json, dict):
+            return job.result_json
+
+        file_result = await db.execute(select(File).where(File.id == job.file_id))
+        file_record = file_result.scalar_one_or_none()
+        if not file_record:
+            job.status = "failed"
+            job.error_message = f"文件 {job.file_id} 不存在"
+            await db.commit()
+            raise FileNotFoundError(job.error_message)
+
+        job.status = "processing"
+        job.error_message = None
+        await db.commit()
+
+        try:
+            job_type = job_type_override or job.job_type or "document"
+            ocr_result = await asyncio.to_thread(
+                OcrEngine().extract,
+                file_record.stored_path,
+                job_type=job_type,
             )
-            job = result.scalar_one_or_none()
-            if not job:
-                raise ValueError(f"OCR 任务 {job_id} 不存在")
-
-            # 更新状态
-            job.status = "processing"
-
-            # 2. 获取文件
-            result = await db.execute(
-                select(File).where(File.id == job.file_id)
-            )
-            file_record = result.scalar_one_or_none()
-            if not file_record:
-                job.status = "failed"
-                job.error_message = f"文件 {job.file_id} 不存在"
-                await db.commit()
-                return {"error": job.error_message}
-
-            # 3. OCR 识别
-            try:
-                ocr_result = await recognize_file(file_record.stored_path)
-            except Exception as e:
-                job.status = "failed"
-                job.error_message = f"OCR 识别失败: {str(e)}"
-                await db.commit()
-                raise
-
-            # 4. 写入结果
-            job.result_text = ocr_result.get("raw_text", "")
-            job.result_json = ocr_result
+            payload = build_job_result(job_type, ocr_result)
+            job.result_text = ocr_result.text
+            job.result_json = payload
             job.status = "completed"
             await db.commit()
-
-            return ocr_result
-
-    return asyncio.run(_run())
-
-
-@app.task(name="ocr.process_receipt", bind=True)
-def process_receipt_ocr(self, job_id: int) -> dict:
-    """收据专用 OCR — 调用 receipt_handler 提取结构化字段"""
-    import asyncio
-
-    async def _run():
-        from workers.ocr_worker.handlers.receipt_handler import handle_receipt_ocr
-        return await handle_receipt_ocr(job_id)
-
-    return asyncio.run(_run())
+            return payload
+        except Exception as exc:
+            job.status = "failed"
+            job.error_message = str(exc)[:500]
+            await db.commit()
+            raise
 
 
-@app.task(name="ocr.process_document", bind=True)
-def process_document_ocr(self, job_id: int) -> dict:
-    """文档通用 OCR — 调用 document_handler"""
-    import asyncio
+def process_ocr_job_sync(job_id: int, *, job_type_override: str | None = None) -> dict[str, Any]:
+    return asyncio.run(_process_job(job_id, job_type_override))
 
-    async def _run():
-        from workers.ocr_worker.handlers.document_handler import handle_document_ocr
-        return await handle_document_ocr(job_id)
 
-    return asyncio.run(_run())
+@app.task(name="ocr.process", bind=True, max_retries=3, default_retry_delay=15)
+def process_ocr_job(self, job_id: int) -> dict[str, Any]:
+    try:
+        return process_ocr_job_sync(job_id)
+    except OSError as exc:
+        raise self.retry(exc=exc)
+
+
+@app.task(name="ocr.process_receipt", bind=True, max_retries=3, default_retry_delay=15)
+def process_receipt_ocr(self, job_id: int) -> dict[str, Any]:
+    try:
+        return process_ocr_job_sync(job_id, job_type_override="receipt")
+    except OSError as exc:
+        raise self.retry(exc=exc)
+
+
+@app.task(name="ocr.process_document", bind=True, max_retries=3, default_retry_delay=15)
+def process_document_ocr(self, job_id: int) -> dict[str, Any]:
+    try:
+        return process_ocr_job_sync(job_id, job_type_override="document")
+    except OSError as exc:
+        raise self.retry(exc=exc)

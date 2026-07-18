@@ -1,4 +1,0 @@
--r requirements.txt
-paddleocr>=3.0.0
-# 请按服务器 CPU/GPU 环境另行安装匹配版本的 paddlepaddle 或 paddlepaddle-gpu。
-

@@ -2,19 +2,20 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# 系统依赖（OCR 需要 libgomp1 等）
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc libpq-dev libgomp1 && \
+    gcc libpq-dev && \
     rm -rf /var/lib/apt/lists/*
 
-# Python 依赖（与 API 共用 requirements.txt）
-COPY apps/api/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY apps/api/requirements.txt /tmp/api-requirements.txt
+COPY workers/ocr_worker/requirements.txt /tmp/worker-requirements.txt
+RUN pip install --no-cache-dir \
+    -r /tmp/api-requirements.txt \
+    -r /tmp/worker-requirements.txt
 
-# Worker 代码
-COPY workers/ocr_worker/ .
+COPY apps/api/app /app/app
+COPY workers /app/workers
+RUN mkdir -p /app/uploads
 
-# 创建上传目录
-RUN mkdir -p uploads
+ENV PYTHONPATH=/app
 
-CMD ["celery", "-A", "main", "worker", "--loglevel=info", "--concurrency=2"]
+CMD ["celery", "-A", "workers.ocr_worker.main:app", "worker", "--loglevel=info", "--concurrency=2"]
