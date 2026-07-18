@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable, { Column } from "@/components/ui/DataTable";
-import { Plus, GraduationCap, Search } from "lucide-react";
+import { Plus, GraduationCap } from "lucide-react";
 
 interface StudentRecord {
   id: string;
@@ -113,14 +113,13 @@ export default function StudentsPage() {
 
       {/* 搜索欄 */}
       <div className="flex items-center gap-4 mb-4">
-        <div className="relative flex-1 max-w-xs">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <div className="flex-1 max-w-xs">
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="搜索姓名/學號/班級..."
-            className="w-full pl-10 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
         </div>
         <span className="text-sm text-gray-500">

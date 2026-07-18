@@ -99,8 +99,8 @@ erDiagram
     }
 
     role_permissions {
-        int       role_id       PK_FK "关联 roles.id"
-        int       permission_id PK_FK "关联 permissions.id"
+        int       role_id       PK "关联 roles.id"
+        int       permission_id PK "关联 permissions.id"
     }
 
     %% ================================================================
@@ -294,6 +294,17 @@ erDiagram
       entityPadding: 8,
       fontSize: 12,
     },
+  });
+  window.addEventListener('load', function() {
+    setTimeout(function() {
+      const errors = document.querySelectorAll('.mermaid svg');
+      if (errors.length === 0) {
+        const wrapper = document.querySelector('.mermaid-wrapper');
+        if (wrapper && wrapper.textContent.includes('Syntax error')) {
+          console.error('Mermaid 语法错误，请检查 ER 图代码');
+        }
+      }
+    }, 1000);
   });
 </script>
 

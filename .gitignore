@@ -96,6 +96,9 @@ pytest_cache/
 .mypy_cache/
 .ruff_cache/
 
+# SQLite databases (test runs)
+*.db
+
 # Jupyter Notebook
 .ipynb_checkpoints
 

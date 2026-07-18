@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable, { Column } from "@/components/ui/DataTable";
-import { Award, Plus, FileText, BarChart3, Layers, Search } from "lucide-react";
+import { Award, Plus, FileText, BarChart3, Layers } from "lucide-react";
 
 interface AwardRecord {
   id: number;
@@ -156,14 +156,13 @@ export default function AwardsPage() {
 
       {/* 搜索 */}
       <div className="flex items-center gap-4 mb-4">
-        <div className="relative flex-1 max-w-xs">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <div className="flex-1 max-w-xs">
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="搜尋獎狀名稱..."
-            className="w-full pl-10 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
         </div>
         <span className="text-sm text-gray-500">
