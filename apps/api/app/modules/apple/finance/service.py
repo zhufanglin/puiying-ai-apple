@@ -152,53 +152,36 @@ def _parse_ocr_result(raw_text: str) -> dict:
 
 
 async def receipt_ocr_analyze(db: AsyncSession, file_id: int, user_id: int) -> dict:
-    """收据 OCR 识别（对接 OCR Worker）
-
-    流程: 查文件 → 创建 OCRJob → 提交 Celery → 轮询 → 结构化返回
-    """
-    from app.modules.files.models import File as FileModel
+    """读取前端已提交的异步 OCR 结果，不在业务请求内重复阻塞 Worker。"""
     from app.modules.ocr.models import OCRJob
 
-    result = await db.execute(select(FileModel).where(FileModel.id == file_id))
-    file_record = result.scalar_one_or_none()
-    if not file_record:
-        return {"amount": None, "currency": "HKD", "date": "", "payer": "", "purpose": "",
-                "confidence": "low", "warnings": ["文件不存在"], "raw_text": ""}
-
-    ocr_job = OCRJob(file_id=file_id, module="finance", status="pending", created_by=user_id)
-    db.add(ocr_job)
-    await db.flush()
-    await db.refresh(ocr_job)
-
-    raw_text = ""
-    try:
-        from workers.ocr_worker.tasks import process_receipt_ocr
-        task = process_receipt_ocr.delay(ocr_job.id)
-        result_data = task.get(timeout=120)
-        if result_data and isinstance(result_data, dict):
-            return result_data
-    except Exception:
-        pass
-
-    try:
-        from workers.ocr_worker.services.ocr_engine import recognize_file
-        ocr_job.status = "processing"
-        ocr_result = await recognize_file(file_record.stored_path)
-        raw_text = ocr_result.get("raw_text", "")
-        ocr_job.result_text = raw_text
-        ocr_job.result_json = ocr_result
-        ocr_job.status = "completed"
-    except Exception as e:
-        ocr_job.status = "failed"
-        ocr_job.error_message = str(e)
-
-    await db.flush()
-
-    if raw_text:
-        return _parse_ocr_result(raw_text)
-
+    result = await db.execute(
+        select(OCRJob)
+        .where(
+            OCRJob.file_id == file_id,
+            OCRJob.created_by == user_id,
+            OCRJob.status == "completed",
+        )
+        .order_by(OCRJob.id.desc())
+        .limit(1)
+    )
+    job = result.scalar_one_or_none()
+    stored_payload = getattr(job, "result_json", None) if job else None
+    payload = stored_payload if isinstance(stored_payload, dict) else {}
+    fields = payload.get("fields") if isinstance(payload.get("fields"), dict) else {}
+    if fields:
+        return {
+            "amount": fields.get("amount"),
+            "currency": fields.get("currency", "HKD"),
+            "date": fields.get("date", ""),
+            "payer": fields.get("payer", ""),
+            "purpose": fields.get("purpose", ""),
+            "confidence": payload.get("confidence", "low"),
+            "warnings": payload.get("warnings", []),
+            "raw_text": payload.get("raw_text", job.result_text or ""),
+        }
     return {"amount": None, "currency": "HKD", "date": "", "payer": "", "purpose": "",
-            "confidence": "low", "warnings": [ocr_job.error_message or "OCR 引擎不可用"], "raw_text": raw_text}
+            "confidence": "low", "warnings": ["尚无已完成的 OCR 结果"], "raw_text": ""}
 
 
 # ============== 报价单分析 ==============

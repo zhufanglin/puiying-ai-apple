@@ -24,6 +24,9 @@ async_session_factory = async_sessionmaker(
     expire_on_commit=False,
 )
 
+# FastAPI、Celery Worker 和独立脚本共用同一异步会话工厂。
+SessionLocal = async_session_factory
+
 
 async def get_db() -> AsyncSession:
     """FastAPI 依赖注入：每次请求提供独立会话"""

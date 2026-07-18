@@ -14,6 +14,10 @@ class OCRJob(Base, TimestampMixin):
 
     file_id: Mapped[int] = mapped_column(comment="关联 files.id")
     module: Mapped[str] = mapped_column(String(50), comment="归属模块")
+    job_type: Mapped[str] = mapped_column(
+        String(30), default="document",
+        comment="receipt / invoice / certificate / document",
+    )
     status: Mapped[str] = mapped_column(
         String(20), default="pending",
         comment="pending / processing / completed / failed"
