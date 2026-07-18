@@ -21,6 +21,10 @@ interface OcrJob {
       lines?: OcrResult["lines"];
       engine?: string;
     };
+    fields?: Record<string, unknown>;
+    confidence?: string;
+    warnings?: unknown[];
+    raw_text?: string;
   } | null;
   error_message: string | null;
 }
@@ -29,7 +33,15 @@ export interface ServerOcrResult {
   ocr: OcrResult;
   fileId: number | null;
   engine: "baidu_ocr" | "tesseract_js";
+  structured?: ServerStructuredResult;
   fallbackReason?: string;
+}
+
+export interface ServerStructuredResult {
+  fields: Record<string, unknown>;
+  confidence?: string;
+  warnings: string[];
+  rawText: string;
 }
 
 const sleep = (milliseconds: number) =>
@@ -59,12 +71,27 @@ function normalizeJob(job: OcrJob): OcrResult {
   };
 }
 
+function normalizeStructuredJob(job: OcrJob): ServerStructuredResult | undefined {
+  const result = job.result_json;
+  if (!result?.fields || typeof result.fields !== "object") return undefined;
+  return {
+    fields: result.fields,
+    confidence: typeof result.confidence === "string" ? result.confidence : undefined,
+    warnings: Array.isArray(result.warnings)
+      ? result.warnings.filter((value): value is string => typeof value === "string")
+      : [],
+    rawText: typeof result.raw_text === "string"
+      ? result.raw_text
+      : job.result_text ?? "",
+  };
+}
+
 async function recognizeWithBaidu(
   file: File,
   module: AppleModule,
   jobType: OcrJobType,
   onProgress?: (progress: number) => void,
-): Promise<{ ocr: OcrResult; fileId: number }> {
+): Promise<{ ocr: OcrResult; fileId: number; structured?: ServerStructuredResult }> {
   onProgress?.(0.05);
   const form = new FormData();
   form.append("file", file);
@@ -85,7 +112,11 @@ async function recognizeWithBaidu(
     for (let attempt = 0; attempt < 60; attempt += 1) {
       if (job.status === "completed") {
         onProgress?.(1);
-        return { ocr: normalizeJob(job), fileId };
+        return {
+          ocr: normalizeJob(job),
+          fileId,
+          structured: normalizeStructuredJob(job),
+        };
       }
       if (job.status === "failed") {
         throw new Error(job.error_message || "百度 OCR 任务失败");
