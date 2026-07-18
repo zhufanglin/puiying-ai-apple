@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { X, Sparkles, AlertTriangle } from "lucide-react";
 import UploadDropzone from "@/components/ui/UploadDropzone";
-import { recognizeImage } from "@/lib/ocr-engine";
+import { recognizeWithServerFallback } from "@/lib/ocr-api";
 import { parseInvoice, type InvoiceResult } from "@/lib/invoice-parser";
 
 const B = "#23675f";
@@ -18,6 +18,7 @@ interface Props {
     assetNo: string; name: string; category: string;
     location: string; purchaseDate: string;
     purchaseAmount: number; remark: string;
+    fileId?: number;
   }) => void;
 }
 
@@ -30,6 +31,7 @@ export default function UploadAssetDialog({ open, onClose, onConfirm }: Props) {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [ocr, setOcr] = useState<InvoiceResult|null>(null);
+  const [fileId, setFileId] = useState<number|null>(null);
   const [error, setError] = useState<string|null>(null);
   const [form, setForm] = useState({
     assetNo: "", name: "", category: "", location: "",
@@ -47,16 +49,22 @@ export default function UploadAssetDialog({ open, onClose, onConfirm }: Props) {
     setProgress(0);
 
     try {
-      // 1. OCR 識別
-      const ocrResult = await recognizeImage(file, {
+      // 1. 優先後端百度 OCR；不可用時回退瀏覽器 Tesseract.js
+      const recognized = await recognizeWithServerFallback(file, {
+        module: "assets",
+        jobType: "invoice",
         language: "chi_sim+eng",
         onProgress: (pct) => setProgress(Math.round(pct * 100)),
       });
 
       // 2. 解析發票字段
-      const parsed: InvoiceResult = parseInvoice(ocrResult);
+      const parsed: InvoiceResult = parseInvoice(recognized.ocr);
+      if (recognized.fallbackReason) {
+        parsed.warnings.unshift(`百度 OCR 不可用，已改用瀏覽器識別：${recognized.fallbackReason}`);
+      }
 
       setOcr(parsed);
+      setFileId(recognized.fileId);
 
       // 3. 自動填充表單
       setForm({
@@ -80,7 +88,7 @@ export default function UploadAssetDialog({ open, onClose, onConfirm }: Props) {
   };
 
   const close = () => {
-    setStep("upload"); setOcr(null); setError(null);
+    setStep("upload"); setOcr(null); setFileId(null); setError(null);
     setForm({ assetNo: "", name: "", category: "", location: "", purchaseDate: "", purchaseAmount: "", remark: "" });
     onClose();
   };
@@ -93,6 +101,7 @@ export default function UploadAssetDialog({ open, onClose, onConfirm }: Props) {
     onConfirm({
       ...form,
       purchaseAmount: parseFloat(form.purchaseAmount) || 0,
+      fileId: fileId ?? undefined,
     });
     close();
   };

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { X, Sparkles, AlertTriangle } from "lucide-react";
 import UploadDropzone from "@/components/ui/UploadDropzone";
-import { recognizeImage } from "@/lib/ocr-engine";
+import { recognizeWithServerFallback } from "@/lib/ocr-api";
 import { parseReceipt, type ReceiptResult } from "@/lib/receipt-parser";
 
 const B = "#23675f";
@@ -16,6 +16,7 @@ interface OCRResult {
   amount: number | null; currency: string; date: string;
   payer: string; purpose: string; confidence: "low"|"medium"|"high";
   warnings: string[]; raw_text: string;
+  fileId?: number;
 }
 
 interface Props { open: boolean; onClose: () => void; onConfirm: (data: OCRResult) => void; }
@@ -43,14 +44,20 @@ export default function UploadReceiptDialog({ open, onClose, onConfirm }: Props)
     setProgress(0);
 
     try {
-      // 1. OCR 識別
-      const ocrResult = await recognizeImage(file, {
+      // 1. 優先後端百度 OCR；不可用時回退瀏覽器 Tesseract.js
+      const recognized = await recognizeWithServerFallback(file, {
+        module: "finance",
+        jobType: "receipt",
         language: "chi_sim+eng",
         onProgress: (pct) => setProgress(Math.round(pct * 100)),
       });
 
       // 2. 解析收據字段（嚴格按 receipt_extract_zh_hk.md 格式）
-      const parsed: ReceiptResult = parseReceipt(ocrResult);
+      const parsed: ReceiptResult = parseReceipt(recognized.ocr);
+      const warnings = [...parsed.warnings];
+      if (recognized.fallbackReason) {
+        warnings.unshift(`百度 OCR 不可用，已改用瀏覽器識別：${recognized.fallbackReason}`);
+      }
 
       // 3. 轉為組件使用的格式
       const result: OCRResult = {
@@ -60,8 +67,9 @@ export default function UploadReceiptDialog({ open, onClose, onConfirm }: Props)
         payer: parsed.fields.payer,
         purpose: parsed.fields.purpose,
         confidence: parsed.confidence,
-        warnings: parsed.warnings,
+        warnings,
         raw_text: parsed.raw_text,
+        fileId: recognized.fileId ?? undefined,
       };
 
       setOcr(result);

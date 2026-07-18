@@ -9,6 +9,7 @@ import DataTable, { type Column } from "@/components/ui/DataTable";
 import TaskStatusBadge from "@/components/ui/TaskStatusBadge";
 import FilterBar from "@/components/ui/FilterBar";
 import UploadReceiptDialog from "@/components/modules/apple/UploadReceiptDialog";
+import { api } from "@/lib/api";
 
 /* ================================================================
    參考 wendy-substitute.html 樣式
@@ -104,9 +105,26 @@ export default function FinancePage() {
   const [ifilters, setIfilters] = useState<Record<string,string>>({});
   const [efilters, setEfilters] = useState<Record<string,string>>({});
 
-  const handleReceipt = (r: { amount:number|null; date:string; payer:string; purpose:string }) => {
+  const handleReceipt = async (r: { amount:number|null; date:string; payer:string; purpose:string; fileId?:number }) => {
+    let id = incomeData.length + 1;
+    if (r.amount && r.date && r.purpose && r.payer) {
+      try {
+        const response = await api.post<{ id: number }>("/apple/finance/income", {
+          type: "income",
+          date: r.date,
+          project: r.purpose,
+          amount: r.amount,
+          payment_method: "現金",
+          handler: r.payer,
+          file_id: r.fileId,
+        });
+        id = response.data.id;
+      } catch {
+        // 後端不可用時仍保留本地演示資料。
+      }
+    }
     const n: IncomeRecord = {
-      id: incomeData.length+1, date: r.date, project: r.purpose,
+      id, date: r.date, project: r.purpose,
       amount: r.amount??0, paymentMethod:"現金", handler: r.payer, status:"pending",
     };
     setIncomeData(p=>[n,...p]);

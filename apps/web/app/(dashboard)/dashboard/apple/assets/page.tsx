@@ -84,9 +84,11 @@ export default function AssetsPage() {
       try {
         const { api } = await import("@/lib/api");
         const res = await api.get<{ items?: AssetRecord[]; total?: number }>("/apple/assets?page_size=200");
-        const items = res.data?.items || res.data;
+        const items = res.data?.items ?? [];
         if (Array.isArray(items) && items.length > 0) {
-          const mapped: AssetRecord[] = (items as unknown[]).map((a: Record<string, unknown>) => ({
+          const mapped: AssetRecord[] = items.map((item) => {
+            const a = item as unknown as Record<string, unknown>;
+            return ({
             id: (a.id ?? a.ID) as number,
             assetNo: (a.asset_no ?? a.assetNo ?? "") as string,
             name: (a.name ?? "") as string,
@@ -98,7 +100,8 @@ export default function AssetsPage() {
             remark: (a.remark ?? "") as string,
             written_off_at: (a.written_off_at ?? a.WrittenOffAt) as string | undefined,
             written_off_reason: (a.written_off_reason ?? a.WrittenOffReason) as string | undefined,
-          }));
+            });
+          });
           setAssets(mapped);
         }
       } catch {
@@ -108,7 +111,7 @@ export default function AssetsPage() {
     loadAssets();
   }, []);
 
-  const handleUpload = async (d: { name:string; category:string; location:string; purchaseDate:string; purchaseAmount:number; remark:string; assetNo:string }) => {
+  const handleUpload = async (d: { name:string; category:string; location:string; purchaseDate:string; purchaseAmount:number; remark:string; assetNo:string; fileId?:number }) => {
     const payload = {
       name: d.name,
       category: d.category,
@@ -117,10 +120,11 @@ export default function AssetsPage() {
       purchase_date: d.purchaseDate || undefined,
       purchase_amount: d.purchaseAmount || undefined,
       remark: d.remark || undefined,
+      file_id: d.fileId,
     };
     try {
       const { api } = await import("@/lib/api");
-      const res = await api.post("/apple/assets", payload);
+      const res = await api.post<Record<string, any>>("/apple/assets", payload);
       const created = res.data || res;
       const n: AssetRecord = {
         id: created.id ?? assets.length + 1,
@@ -158,8 +162,8 @@ export default function AssetsPage() {
     };
     try {
       const { api } = await import("@/lib/api");
-      const res = await api.post("/apple/assets", payload);
-      const created = res.data || res;
+      const res = await api.post<Record<string, any>>("/apple/assets", payload);
+      const created = res.data;
       const n: AssetRecord = {
         id: created.id ?? assets.length + 1,
         assetNo: created.asset_no ?? created.assetNo ?? `AS-${new Date().getFullYear()}-${String(assets.length+1).padStart(3,"0")}`,
