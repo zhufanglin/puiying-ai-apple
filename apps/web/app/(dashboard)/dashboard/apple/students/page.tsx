@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable, { Column } from "@/components/ui/DataTable";
 import { Plus, GraduationCap } from "lucide-react";
@@ -61,8 +62,20 @@ export default function StudentsPage() {
     : students;
 
   const columns: Column<StudentRecord>[] = [
-    { key: "studentNo", header: "學號", width: "120px" },
-    { key: "nameZh", header: "姓名", width: "100px" },
+    { key: "studentNo", header: "學號", width: "120px",
+      render: (row) => (
+        <Link href={`/dashboard/apple/students/${row.id}`} className="text-primary-600 hover:underline font-medium">
+          {row.studentNo}
+        </Link>
+      ),
+    },
+    { key: "nameZh", header: "姓名", width: "100px",
+      render: (row) => (
+        <Link href={`/dashboard/apple/students/${row.id}`} className="text-primary-600 hover:underline font-medium">
+          {row.nameZh}
+        </Link>
+      ),
+    },
     {
       key: "className",
       header: "班級",

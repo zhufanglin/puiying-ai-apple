@@ -260,6 +260,7 @@ class BatchGenerateData(BaseModel):
 
 class BatchExportRequest(BaseModel):
     """批量导出证书请求"""
+    model_config = ConfigDict(extra="ignore")
     ids: list[int] = Field(..., min_length=1, description="奖状ID列表 或 奖学金申请ID列表")
 
 

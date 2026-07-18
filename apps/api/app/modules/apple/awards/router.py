@@ -57,6 +57,7 @@ import os
 import time
 import uuid
 import zipfile
+from datetime import date
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Response
@@ -507,10 +508,11 @@ async def batch_generate(
         raise_error(*NOT_FOUND, detail={"template_id": body.template_id})
 
     # 2. 创建奖状（已发布状态）
+    parsed_date = date.fromisoformat(body.issue_date)
     award_data = {
         "template_id": body.template_id,
         "title": template.name,
-        "issue_date": body.issue_date,
+        "issue_date": parsed_date,
         "issuer": None,
         "status": "confirmed",
         "total_recipients": len(body.recipients),
@@ -580,7 +582,7 @@ async def download_certificate(
     return FileResponse(
         path=str(file_path.resolve()),
         filename=safe_name,
-        media_type="application/octet-stream",
+        media_type="application/pdf",
     )
 
 

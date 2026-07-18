@@ -249,14 +249,18 @@ export const awardApi = {
 
   /** 批量導出獎學金證書（ZIP 包，自動觸發下載） */
   batchExportScholarships: async (appIds: number[]) => {
+    if (!appIds || appIds.length === 0) throw new Error("請先選擇需要導出的申請");
     const token = localStorage.getItem("token");
     const url = `${api.baseUrl}/apple/awards/scholarships/batch-export`;
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ ids: appIds, output_format: "pdf" }),
+      body: JSON.stringify({ ids: appIds }),
     });
-    if (!res.ok) throw new Error("批量導出失敗");
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      throw new Error((json as any).message || "批量導出失敗");
+    }
     const blob = await res.blob();
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);

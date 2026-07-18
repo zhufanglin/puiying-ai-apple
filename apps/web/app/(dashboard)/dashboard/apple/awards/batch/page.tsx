@@ -126,17 +126,37 @@ export default function BatchGeneratePage() {
     }
   };
 
+  /** 带 token 下载文件（避免跳转到后端） */
+  const downloadFile = async (filePath: string, studentName: string) => {
+    const token = localStorage.getItem("token");
+    const url = `${api.baseUrl}/apple/awards/download/${filePath}`;
+    try {
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`下載失敗 (${res.status})`);
+      const blob = await res.blob();
+      // 后端返回 octet-stream，需转为 pdf 以便浏览器识别
+      const pdfBlob = new Blob([blob], { type: "application/pdf" });
+      const blobUrl = URL.createObjectURL(pdfBlob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = `${studentName}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    } catch (e) {
+      console.error("下載文件失敗", e);
+    }
+  };
+
   const handleDownloadAll = async () => {
     if (!downloads || downloads.length === 0) return;
     setDownloadingZip(true);
     try {
       for (const item of downloads) {
-        const link = document.createElement("a");
-        link.href = `${api.baseUrl}/apple/awards/download/${item.file_path}`;
-        link.download = `${item.student_name}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        await downloadFile(item.file_path, item.student_name);
         await new Promise((r) => setTimeout(r, 300));
       }
     } finally {
@@ -404,13 +424,12 @@ export default function BatchGeneratePage() {
                         {item.student_name}
                       </td>
                       <td className="px-3 py-2 text-right">
-                        <a
-                          href={`${api.baseUrl}/apple/awards/download/${item.file_path}`}
-                          download={`${item.student_name}.pdf`}
+                        <button
+                          onClick={() => downloadFile(item.file_path, item.student_name)}
                           className="inline-flex items-center gap-1 text-sm text-primary-600 hover:text-primary-700"
                         >
                           <Download size={14} /> 下載
-                        </a>
+                        </button>
                       </td>
                     </tr>
                   ))}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Package, Plus, MapPin, AlertTriangle, CheckCircle, Upload, Clock } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable, { type Column } from "@/components/ui/DataTable";
@@ -76,29 +76,115 @@ export default function AssetsPage() {
   const [sfilters, setSfilters] = useState<Record<string,string>>({});
   const [wfilters, setWfilters] = useState<Record<string,string>>({});
   const [form, setForm] = useState({ assetNo:"", name:"", category:"", location:"", purchaseDate:"", purchaseAmount:"", remark:"" });
+  const [adding, setAdding] = useState(false);
 
-  const handleUpload = (d: { name:string; category:string; location:string; purchaseDate:string; purchaseAmount:number; remark:string; assetNo:string }) => {
-    const n: AssetRecord = {
-      id: assets.length+1,
-      assetNo: d.assetNo || `AS-${new Date().getFullYear()}-${String(assets.length+1).padStart(3,"0")}`,
-      name:d.name, category:d.category, location:d.location, status:"active",
-      purchaseDate: d.purchaseDate||new Date().toISOString().split("T")[0],
-      purchaseAmount: d.purchaseAmount, remark: d.remark,
+  // 從後端加載真實資產數據
+  useEffect(() => {
+    const loadAssets = async () => {
+      try {
+        const { api } = await import("@/lib/api");
+        const res = await api.get<{ items?: AssetRecord[]; total?: number }>("/apple/assets?page_size=200");
+        const items = res.data?.items || res.data;
+        if (Array.isArray(items) && items.length > 0) {
+          const mapped: AssetRecord[] = (items as unknown[]).map((a: Record<string, unknown>) => ({
+            id: (a.id ?? a.ID) as number,
+            assetNo: (a.asset_no ?? a.assetNo ?? "") as string,
+            name: (a.name ?? "") as string,
+            category: (a.category ?? "") as string,
+            location: (a.location ?? "") as string,
+            status: (a.status ?? "active") as string,
+            purchaseDate: (a.purchase_date ?? a.purchaseDate ?? "") as string,
+            purchaseAmount: (a.purchase_amount ?? a.purchaseAmount ?? 0) as number,
+            remark: (a.remark ?? "") as string,
+            written_off_at: (a.written_off_at ?? a.WrittenOffAt) as string | undefined,
+            written_off_reason: (a.written_off_reason ?? a.WrittenOffReason) as string | undefined,
+          }));
+          setAssets(mapped);
+        }
+      } catch {
+        // 後端不可用，使用 MOCK_ASSETS
+      }
     };
-    setAssets(p=>[n,...p]);
+    loadAssets();
+  }, []);
+
+  const handleUpload = async (d: { name:string; category:string; location:string; purchaseDate:string; purchaseAmount:number; remark:string; assetNo:string }) => {
+    const payload = {
+      name: d.name,
+      category: d.category,
+      location: d.location,
+      asset_no: d.assetNo || undefined,
+      purchase_date: d.purchaseDate || undefined,
+      purchase_amount: d.purchaseAmount || undefined,
+      remark: d.remark || undefined,
+    };
+    try {
+      const { api } = await import("@/lib/api");
+      const res = await api.post("/apple/assets", payload);
+      const created = res.data || res;
+      const n: AssetRecord = {
+        id: created.id ?? assets.length + 1,
+        assetNo: created.asset_no ?? created.assetNo ?? `AS-${new Date().getFullYear()}-${String(assets.length+1).padStart(3,"0")}`,
+        name: created.name, category: created.category, location: created.location, status: created.status ?? "active",
+        purchaseDate: created.purchase_date ?? created.purchaseDate ?? new Date().toISOString().split("T")[0],
+        purchaseAmount: created.purchase_amount ?? created.purchaseAmount ?? d.purchaseAmount ?? 0,
+        remark: created.remark ?? d.remark ?? "",
+      };
+      setAssets(p => [n, ...p]);
+    } catch {
+      // 后端不可用时回退到本地 mock
+      const n: AssetRecord = {
+        id: assets.length+1,
+        assetNo: d.assetNo || `AS-${new Date().getFullYear()}-${String(assets.length+1).padStart(3,"0")}`,
+        name:d.name, category:d.category, location:d.location, status:"active",
+        purchaseDate: d.purchaseDate||new Date().toISOString().split("T")[0],
+        purchaseAmount: d.purchaseAmount, remark: d.remark,
+      };
+      setAssets(p=>[n,...p]);
+    }
   };
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!form.name||!form.category||!form.location) { alert("請填寫資產名稱、類別和地點"); return; }
-    const n: AssetRecord = {
-      id: assets.length+1,
-      assetNo: form.assetNo || `AS-${new Date().getFullYear()}-${String(assets.length+1).padStart(3,"0")}`,
-      name:form.name, category:form.category, location:form.location, status:"active",
-      purchaseDate: form.purchaseDate||new Date().toISOString().split("T")[0],
-      purchaseAmount: parseFloat(form.purchaseAmount)||0, remark: form.remark,
+    setAdding(true);
+    const payload = {
+      name: form.name,
+      category: form.category,
+      location: form.location,
+      asset_no: form.assetNo || undefined,
+      purchase_date: form.purchaseDate || undefined,
+      purchase_amount: parseFloat(form.purchaseAmount) || undefined,
+      remark: form.remark || undefined,
     };
-    setAssets(p=>[n,...p]);
-    setForm({ assetNo:"", name:"", category:"", location:"", purchaseDate:"", purchaseAmount:"", remark:"" });
+    try {
+      const { api } = await import("@/lib/api");
+      const res = await api.post("/apple/assets", payload);
+      const created = res.data || res;
+      const n: AssetRecord = {
+        id: created.id ?? assets.length + 1,
+        assetNo: created.asset_no ?? created.assetNo ?? `AS-${new Date().getFullYear()}-${String(assets.length+1).padStart(3,"0")}`,
+        name: created.name, category: created.category, location: created.location, status: created.status ?? "active",
+        purchaseDate: created.purchase_date ?? created.purchaseDate ?? new Date().toISOString().split("T")[0],
+        purchaseAmount: created.purchase_amount ?? created.purchaseAmount ?? parseFloat(form.purchaseAmount) ?? 0,
+        remark: created.remark ?? form.remark ?? "",
+      };
+      setAssets(p => [n, ...p]);
+      setForm({ assetNo:"", name:"", category:"", location:"", purchaseDate:"", purchaseAmount:"", remark:"" });
+    } catch (e) {
+      // 后端不可用时回退到本地 mock
+      alert("後端寫入失敗，已暫存於頁面列表（刷新後將丟失）");
+      const n: AssetRecord = {
+        id: assets.length+1,
+        assetNo: form.assetNo || `AS-${new Date().getFullYear()}-${String(assets.length+1).padStart(3,"0")}`,
+        name:form.name, category:form.category, location:form.location, status:"active",
+        purchaseDate: form.purchaseDate||new Date().toISOString().split("T")[0],
+        purchaseAmount: parseFloat(form.purchaseAmount)||0, remark: form.remark,
+      };
+      setAssets(p=>[n,...p]);
+      setForm({ assetNo:"", name:"", category:"", location:"", purchaseDate:"", purchaseAmount:"", remark:"" });
+    } finally {
+      setAdding(false);
+    }
   };
 
   const handleMove = (d: { assetId:number; fromLocation:string; toLocation:string; movementDate:string; reason:string }) => {
@@ -362,9 +448,9 @@ export default function AssetsPage() {
               </div>
             </div>
             <div className="flex justify-end pt-2">
-              <button onClick={handleAdd} style={{background:B, borderColor:B}}
-                className="flex items-center gap-1.5 px-6 py-[8px] text-sm text-white rounded-lg font-bold hover:opacity-90">
-                <Plus size={16}/> 登記入庫
+              <button onClick={handleAdd} disabled={adding} style={{background:B, borderColor:B}}
+                className="flex items-center gap-1.5 px-6 py-[8px] text-sm text-white rounded-lg font-bold hover:opacity-90 disabled:opacity-50">
+                <Plus size={16}/> {adding ? "登記中..." : "登記入庫"}
               </button>
             </div>
           </FormSection>

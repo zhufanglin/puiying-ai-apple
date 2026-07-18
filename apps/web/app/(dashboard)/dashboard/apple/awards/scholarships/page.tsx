@@ -69,14 +69,18 @@ export default function ScholarshipsListPage() {
   };
 
   const handleBatchExport = async () => {
+    if (selectedIds.size === 0) {
+      alert("請先勾選需要導出的獎學金申請");
+      return;
+    }
     setExporting(true);
     try {
       await awardApi.batchExportScholarships(Array.from(selectedIds));
       setSelectedIds(new Set());
       setSelectAll(false);
-    } catch (e) {
+    } catch (e: any) {
       console.error("批量導出失敗", e);
-      alert("批量導出失敗，請重試");
+      alert(e.message || "批量導出失敗，請重試");
     } finally {
       setExporting(false);
     }

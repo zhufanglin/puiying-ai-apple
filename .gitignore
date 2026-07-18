@@ -131,3 +131,8 @@ uploads/*
 media/*
 !media/.gitkeep
 next-env.d.ts
+
+# ==================== Runtime Data ====================
+apps/api/data/
+apps/api/app/modules/apple/awards/templates/generated/
+*.db
