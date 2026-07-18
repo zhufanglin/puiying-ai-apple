@@ -78,8 +78,8 @@ services:
   # ---- Celery Worker (OCR) ----
   worker:
     build:
-      context: ./workers/ocr_worker
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./workers/ocr_worker/Dockerfile
     container_name: puiying-worker
     restart: unless-stopped
     depends_on:

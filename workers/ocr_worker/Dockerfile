@@ -8,11 +8,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     rm -rf /var/lib/apt/lists/*
 
 # Python 依赖（与 API 共用 requirements.txt）
-COPY ../api/requirements.txt .
+COPY apps/api/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Worker 代码
-COPY . .
+COPY workers/ocr_worker/ .
 
 # 创建上传目录
 RUN mkdir -p uploads
