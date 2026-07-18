@@ -1,17 +1,40 @@
-from __future__ import annotations
+"""通用文档 OCR 处理器
 
-from typing import Any
+用于发票、合同等非收据/证书类文档。
+"""
 
 
-class DocumentHandler:
-    def process(self, text: str, ocr_confidence: float) -> dict[str, Any]:
-        warnings = [] if text.strip() else ["没有识别到可用文字。"]
-        if ocr_confidence < 0.70:
-            warnings.append("OCR 信心偏低，需要人工复核。")
+async def handle_document_ocr(job_id: int) -> dict:
+    """处理通用文档 OCR 任务
+
+    返回原始 OCR 文本 + 基本元信息。
+    具体业务字段提取由各模块 service 层完成。
+    """
+    from sqlalchemy import select
+    from app.db.session import SessionLocal
+    from app.modules.ocr.models import OCRJob
+
+    async with SessionLocal() as db:
+        result = await db.execute(select(OCRJob).where(OCRJob.id == job_id))
+        job = result.scalar_one_or_none()
+
+        if not job:
+            return {
+                "text": "",
+                "confidence": "low",
+                "warnings": ["OCR 任务不存在"],
+            }
+
+        if not job.result_text:
+            return {
+                "text": "",
+                "confidence": "low",
+                "warnings": ["OCR 文本为空"],
+            }
+
         return {
-            "fields": {"text": text.strip()},
-            "confidence": "low" if warnings else "medium",
-            "warnings": warnings,
-            "raw_text": text,
+            "text": job.result_text,
+            "confidence": "high" if len(job.result_text) > 50 else "medium",
+            "status": job.status,
+            "warnings": [],
         }
-

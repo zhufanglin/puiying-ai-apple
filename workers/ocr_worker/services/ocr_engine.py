@@ -1,258 +1,250 @@
-"""百度 OCR / PaddleOCR / Tesseract / 文本 PDF 的统一 OCR 适配器。"""
+"""OCR 引擎封装 — PaddleOCR / Tesseract 双引擎
 
-from __future__ import annotations
+引擎选择策略:
+    1. PaddleOCR (优先) — 文档指定主引擎，中文识别率高
+    2. pytesseract (回退) — 需要系统安装 Tesseract-OCR
+    3. 浏览器 Tesseract.js — 前端回退（见 apps/web/lib/ocr-engine.ts）
 
-import base64
-import json
+使用:
+    from workers.ocr_worker.services.ocr_engine import recognize_file
+    result = await recognize_file("/path/to/image.jpg")
+"""
+
+import asyncio
 import os
-import time
-from dataclasses import dataclass, field
 from pathlib import Path
-from threading import Lock
-from typing import Any, Callable, Protocol
-from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
-from urllib.request import Request, urlopen
+from typing import Optional
 
 
-@dataclass
-class OcrResult:
-    text: str
-    confidence: float
-    engine: str
-    pages: int = 1
-    warnings: list[str] = field(default_factory=list)
+# ================================================================
+# 引擎检测
+# ================================================================
+
+def _has_paddleocr() -> bool:
+    """检查 PaddleOCR 是否可用"""
+    try:
+        import paddleocr  # noqa: F401
+        return True
+    except ImportError:
+        return False
 
 
-class Backend(Protocol):
-    name: str
-
-    def extract(self, path: Path) -> OcrResult: ...
-
-
-class DirectDocumentBackend:
-    name = "direct_document"
-
-    def extract(self, path: Path) -> OcrResult:
-        suffix = path.suffix.lower()
-        if suffix in {".txt", ".md", ".json", ".csv"}:
-            return OcrResult(path.read_text(encoding="utf-8", errors="replace"), 1.0, self.name)
-        if suffix == ".pdf":
-            from pypdf import PdfReader
-
-            reader = PdfReader(str(path))
-            pages = [(page.extract_text() or "").strip() for page in reader.pages]
-            text = "\n\n".join(page for page in pages if page)
-            warning = [] if text else ["PDF 没有可提取文字，需要图片 OCR。"]
-            return OcrResult(text, 0.95 if text else 0.0, self.name, len(reader.pages), warning)
-        raise ValueError("该文件需要图片 OCR 引擎")
+def _has_tesseract() -> bool:
+    """检查 pytesseract + Tesseract 是否可用"""
+    try:
+        import pytesseract  # noqa: F401
+        from PIL import Image  # noqa: F401
+        # 尝试获取 Tesseract 版本
+        version = pytesseract.get_tesseract_version()
+        return version is not None
+    except Exception:
+        return False
 
 
-class PaddleOcrBackend:
-    name = "paddleocr"
+# ================================================================
+# PaddleOCR 引擎
+# ================================================================
 
-    def __init__(self) -> None:
-        from paddleocr import PaddleOCR
+async def _paddleocr_recognize(file_path: str) -> dict:
+    """使用 PaddleOCR 进行识别
 
-        self.client = PaddleOCR(use_angle_cls=True, lang=os.getenv("PADDLE_OCR_LANG", "ch"), show_log=False)
-
-    def extract(self, path: Path) -> OcrResult:
-        result = self.client.ocr(str(path), cls=True)
-        texts: list[str] = []
-        confidences: list[float] = []
-        for page in result or []:
-            for line in page or []:
-                if len(line) >= 2 and isinstance(line[1], (tuple, list)):
-                    texts.append(str(line[1][0]))
-                    confidences.append(float(line[1][1]))
-        if not texts:
-            return OcrResult("", 0.0, self.name, warnings=["PaddleOCR 未识别到文字。"])
-        return OcrResult("\n".join(texts), sum(confidences) / len(confidences), self.name)
-
-
-class TesseractBackend:
-    name = "tesseract"
-
-    def extract(self, path: Path) -> OcrResult:
-        import pytesseract
-        from PIL import Image
-        from pytesseract import Output
-
-        image = Image.open(path)
-        data = pytesseract.image_to_data(image, lang=os.getenv("TESSERACT_LANG", "chi_tra+eng"), output_type=Output.DICT)
-        words, confidences = [], []
-        for text, confidence in zip(data.get("text", []), data.get("conf", [])):
-            text = str(text).strip()
-            try:
-                score = float(confidence)
-            except (TypeError, ValueError):
-                score = -1
-            if text:
-                words.append(text)
-                if score >= 0:
-                    confidences.append(score / 100)
-        if not words:
-            return OcrResult("", 0.0, self.name, warnings=["Tesseract 未识别到文字。"])
-        return OcrResult(" ".join(words), sum(confidences) / len(confidences) if confidences else 0.5, self.name)
-
-
-HttpTransport = Callable[[str, dict[str, str] | None, str, float], dict[str, Any]]
-
-
-class BaiduOcrBackend:
-    """百度智能云文字识别 HTTP 适配器。
-
-    密钥只从 Worker 环境变量读取；不会写入任务结果、日志或状态文件。
+    PaddleOCR 优势:
+    - 中文（繁体/简体）识别率业界领先
+    - 支持角度检测和文本方向分类
+    - 轻量级模型，CPU 可运行
     """
+    import asyncio as _asyncio
+    from paddleocr import PaddleOCR  # type: ignore
 
-    name = "baidu_ocr"
-    TOKEN_URL = "https://aip.baidubce.com/oauth/2.0/token"
-    ENDPOINTS = {
-        "handwriting": "https://aip.baidubce.com/rest/2.0/ocr/v1/handwriting",
-        "accurate_basic": "https://aip.baidubce.com/rest/2.0/ocr/v1/accurate_basic",
-        "general_basic": "https://aip.baidubce.com/rest/2.0/ocr/v1/general_basic",
-    }
-    _token_cache: dict[tuple[str, str], tuple[str, float]] = {}
-    _token_lock = Lock()
-
-    def __init__(
-        self,
-        *,
-        api_key: str | None = None,
-        secret_key: str | None = None,
-        access_token: str | None = None,
-        mode: str | None = None,
-        timeout: float | None = None,
-        transport: HttpTransport | None = None,
-    ) -> None:
-        self.api_key = api_key or os.getenv("BAIDU_OCR_API_KEY", "")
-        self.secret_key = secret_key or os.getenv("BAIDU_OCR_SECRET_KEY", "")
-        self.access_token = access_token or os.getenv("BAIDU_OCR_ACCESS_TOKEN", "")
-        self.mode = (mode or os.getenv("BAIDU_OCR_MODE", "handwriting")).lower()
-        self.timeout = timeout or float(os.getenv("BAIDU_OCR_TIMEOUT", "20"))
-        self.transport = transport or self._request_json
-        if self.mode not in self.ENDPOINTS:
-            raise ValueError(f"不支持的百度 OCR 模式：{self.mode}")
-        if not self.access_token and not (self.api_key and self.secret_key):
-            raise RuntimeError("百度 OCR 缺少 BAIDU_OCR_API_KEY / BAIDU_OCR_SECRET_KEY")
-
-    def extract(self, path: Path) -> OcrResult:
-        suffix = path.suffix.lower()
-        if suffix not in {".jpg", ".jpeg", ".png", ".bmp", ".pdf"}:
-            raise ValueError("百度 OCR 仅接收 JPG、JPEG、PNG、BMP 或 PDF")
-        encoded = base64.b64encode(path.read_bytes()).decode("ascii")
-        file_field = "pdf_file" if suffix == ".pdf" else "image"
-        form: dict[str, str] = {
-            file_field: encoded,
-            "detect_direction": "true",
-            "probability": "true",
-        }
-        if suffix == ".pdf":
-            form["pdf_file_num"] = os.getenv("BAIDU_OCR_PDF_PAGE", "1")
-        if self.mode == "handwriting":
-            form.update({"recognize_granularity": "big", "eng_granularity": "word"})
-        else:
-            form.update({"language_type": os.getenv("BAIDU_OCR_LANGUAGE", "CHN_ENG"), "paragraph": "true"})
-
-        encoded_body_size = len(urlencode(form).encode("utf-8"))
-        limit = 8 * 1024 * 1024 if self.mode == "handwriting" else 10 * 1024 * 1024
-        if encoded_body_size > limit:
-            raise ValueError(f"百度 OCR 请求编码后超过 {limit // 1024 // 1024}MB 限制")
-
-        token = self._get_access_token()
-        endpoint = f"{self.ENDPOINTS[self.mode]}?{urlencode({'access_token': token})}"
-        payload = self.transport(endpoint, form, "POST", self.timeout)
-        if "error_code" in payload:
-            raise RuntimeError(f"百度 OCR 错误 {payload.get('error_code')}：{payload.get('error_msg', '未知错误')}")
-        words_result = payload.get("words_result") or []
-        texts = [str(item.get("words", "")).strip() for item in words_result if str(item.get("words", "")).strip()]
-        confidences: list[float] = []
-        for item in words_result:
-            probability = item.get("probability") or {}
-            try:
-                confidences.append(float(probability["average"]))
-            except (KeyError, TypeError, ValueError):
-                continue
-        warnings: list[str] = []
-        if not texts:
-            warnings.append("百度 OCR 未识别到文字。")
-        if texts and not confidences:
-            warnings.append("百度 OCR 未返回行置信度，结果必须人工复核。")
-        confidence = sum(confidences) / len(confidences) if confidences else (0.5 if texts else 0.0)
-        return OcrResult("\n".join(texts), confidence, self.name, warnings=warnings)
-
-    def _get_access_token(self) -> str:
-        if self.access_token:
-            return self.access_token
-        cache_key = (self.api_key, self.secret_key)
-        now = time.monotonic()
-        with self._token_lock:
-            cached = self._token_cache.get(cache_key)
-            if cached and cached[1] > now + 60:
-                return cached[0]
-            token_url = f"{self.TOKEN_URL}?{urlencode({'grant_type': 'client_credentials', 'client_id': self.api_key, 'client_secret': self.secret_key})}"
-            payload = self.transport(token_url, None, "GET", self.timeout)
-            token = str(payload.get("access_token", ""))
-            if not token:
-                raise RuntimeError(f"百度 OCR 获取 access_token 失败：{payload.get('error_description') or payload.get('error') or '未知错误'}")
-            expires_in = int(payload.get("expires_in", 2592000))
-            self._token_cache[cache_key] = (token, now + max(expires_in, 120))
-            return token
-
-    @staticmethod
-    def _request_json(url: str, data: dict[str, str] | None, method: str, timeout: float) -> dict[str, Any]:
-        body = urlencode(data).encode("utf-8") if data is not None else None
-        request = Request(
-            url,
-            data=body,
-            method=method,
-            headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"},
+    # PaddleOCR 是同步的，在线程池中运行
+    def _run():
+        ocr = PaddleOCR(
+            lang="ch",            # 中文（含繁体）
+            use_angle_cls=True,   # 文本方向分类
+            show_log=False,
+            use_gpu=False,        # CPU 模式（Docker 环境常见）
         )
+        result = ocr.ocr(file_path, cls=True)
+
+        if not result or not result[0]:
+            return {
+                "raw_text": "",
+                "lines": [],
+                "confidence": 0,
+                "engine": "paddleocr",
+            }
+
+        lines = []
+        confidences = []
+        for line_info in result[0]:
+            text = line_info[1][0]
+            conf = line_info[1][1]
+            bbox = line_info[0]
+            lines.append({
+                "text": text,
+                "confidence": conf,
+                "bbox": {
+                    "x0": bbox[0][0], "y0": bbox[0][1],
+                    "x1": bbox[2][0], "y1": bbox[2][1],
+                },
+            })
+            confidences.append(conf)
+
+        avg_conf = sum(confidences) / len(confidences) if confidences else 0
+        raw = "\n".join(l["text"] for l in lines)
+
+        return {
+            "raw_text": raw,
+            "lines": lines,
+            "confidence": round(avg_conf, 1),
+            "engine": "paddleocr",
+        }
+
+    return await _asyncio.to_thread(_run)
+
+
+# ================================================================
+# Tesseract 引擎（回退）
+# ================================================================
+
+async def _tesseract_recognize(file_path: str) -> dict:
+    """使用 pytesseract 进行识别（回退引擎）"""
+    import asyncio as _asyncio
+    import pytesseract  # type: ignore
+    from PIL import Image
+
+    def _run():
+        img = Image.open(file_path)
+
+        # 获取详细数据（含置信度）
+        data = pytesseract.image_to_data(
+            img, lang="chi_sim+eng", output_type=pytesseract.Output.DICT,
+        )
+
+        lines = []
+        confidences = []
+        current_line = ""
+        current_conf = 0
+        current_block = data["block_num"][0] if data["block_num"] else 0
+        current_par = data["par_num"][0] if data["par_num"] else 0
+        current_line_num = data["line_num"][0] if data["line_num"] else 0
+
+        for i in range(len(data["text"])):
+            text = data["text"][i].strip()
+            if not text:
+                continue
+
+            conf = int(data["conf"][i]) if data["conf"][i] != "-1" else 0
+            ln = data["line_num"][i]
+
+            if ln != current_line_num:
+                if current_line:
+                    lines.append({
+                        "text": current_line,
+                        "confidence": round(current_conf, 1),
+                        "bbox": {"x0": 0, "y0": 0, "x1": 0, "y1": 0},
+                    })
+                current_line = text
+                current_conf = conf
+                current_line_num = ln
+            else:
+                current_line += " " + text
+                current_conf = max(current_conf, conf)
+
+            confidences.append(conf)
+
+        # 最后一行
+        if current_line:
+            lines.append({
+                "text": current_line,
+                "confidence": round(current_conf, 1),
+                "bbox": {"x0": 0, "y0": 0, "x1": 0, "y1": 0},
+            })
+
+        avg_conf = sum(confidences) / len(confidences) if confidences else 0
+        raw = "\n".join(l["text"] for l in lines)
+
+        return {
+            "raw_text": raw,
+            "lines": lines,
+            "confidence": round(avg_conf, 1),
+            "engine": "tesseract",
+        }
+
+    return await _asyncio.to_thread(_run)
+
+
+# ================================================================
+# 统一入口
+# ================================================================
+
+async def recognize_file(file_path: str) -> dict:
+    """识别图片文件中的文本 — 自动选择可用引擎
+
+    Args:
+        file_path: 图片文件路径（支持 JPEG/PNG/BMP/TIFF/PDF）
+
+    Returns:
+        dict: {
+            "raw_text": str,        原始识别文本
+            "lines": list[dict],    每行文本 + 置信度 + 坐标
+            "confidence": float,    平均置信度
+            "engine": str,          使用的引擎 (paddleocr / tesseract)
+        }
+
+    Raises:
+        RuntimeError: 无可用的 OCR 引擎
+    """
+    # 检查文件是否存在
+    path = Path(file_path)
+    if not path.exists():
+        raise FileNotFoundError(f"文件不存在: {file_path}")
+
+    # PDF 文件 → 先转为图片（使用 pdf2image）
+    if path.suffix.lower() == ".pdf":
+        return await _recognize_pdf(file_path)
+
+    # 引擎选择
+    if _has_paddleocr():
+        return await _paddleocr_recognize(file_path)
+
+    if _has_tesseract():
+        return await _tesseract_recognize(file_path)
+
+    raise RuntimeError(
+        "未安装 OCR 引擎。请安装以下任一：\n"
+        "  pip install paddleocr\n"
+        "  或安装 Tesseract-OCR + pip install pytesseract pillow\n"
+        "  或使用浏览器端 Tesseract.js（见 apps/web/lib/ocr-engine.ts）"
+    )
+
+
+async def _recognize_pdf(file_path: str) -> dict:
+    """PDF 文件 OCR — 先转图片再识别"""
+    try:
+        from pdf2image import convert_from_path
+        from tempfile import NamedTemporaryFile
+
+        # 只处理第一页
+        images = convert_from_path(file_path, first_page=1, last_page=1, dpi=300)
+        if not images:
+            raise ValueError("PDF 无页面")
+
+        # 保存第一页为临时图片
+        with NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+            images[0].save(tmp.name, "PNG")
+            tmp_path = tmp.name
+
         try:
-            with urlopen(request, timeout=timeout) as response:  # noqa: S310 - endpoint is fixed by code
-                return json.loads(response.read().decode("utf-8"))
-        except HTTPError as exc:
-            detail = exc.read().decode("utf-8", errors="replace")[:500]
-            raise OSError(f"百度 OCR HTTP {exc.code}：{detail}") from exc
-        except (URLError, TimeoutError) as exc:
-            raise OSError(f"百度 OCR 网络错误：{exc}") from exc
-        except json.JSONDecodeError as exc:
-            raise RuntimeError("百度 OCR 返回的不是合法 JSON") from exc
+            result = await recognize_file(tmp_path)
+            result["engine"] = result.get("engine", "") + "+pdf2image"
+            return result
+        finally:
+            os.unlink(tmp_path)
 
-
-class OcrEngine:
-    """根据文件类型及 OCR_ENGINE 环境变量选择引擎。"""
-
-    def __init__(self, engine: str | None = None) -> None:
-        self.engine = (engine or os.getenv("OCR_ENGINE", "auto")).lower()
-
-    def extract(self, path: str | Path) -> OcrResult:
-        resolved = Path(path).resolve()
-        if not resolved.is_file():
-            raise FileNotFoundError(resolved)
-        if resolved.suffix.lower() in {".txt", ".md", ".json", ".csv", ".pdf"}:
-            direct = DirectDocumentBackend().extract(resolved)
-            if direct.text or resolved.suffix.lower() != ".pdf":
-                return direct
-        errors: list[str] = []
-        if self.engine == "auto":
-            candidates = []
-            if os.getenv("BAIDU_OCR_ENABLED", "false").lower() in {"1", "true", "yes"}:
-                candidates.append("baidu")
-            candidates.extend(["paddleocr", "tesseract"])
-        else:
-            candidates = [self.engine]
-        for name in candidates:
-            try:
-                if name in {"baidu", "baidu_ocr"}:
-                    backend: Backend = BaiduOcrBackend()
-                elif name == "paddleocr":
-                    backend = PaddleOcrBackend()
-                elif name == "tesseract":
-                    backend = TesseractBackend()
-                else:
-                    raise ValueError(f"未知 OCR 引擎：{name}")
-                return backend.extract(resolved)
-            except (ImportError, OSError, RuntimeError, ValueError) as exc:
-                errors.append(f"{name}: {exc}")
-        raise RuntimeError("没有可用的 OCR 引擎；" + "；".join(errors))
+    except ImportError:
+        raise RuntimeError(
+            "PDF 处理需要 pdf2image 和 poppler。安装:\n"
+            "  pip install pdf2image\n"
+            "  并安装 poppler-utils (apt install poppler-utils / brew install poppler)"
+        )
