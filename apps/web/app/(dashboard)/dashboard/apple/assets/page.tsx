@@ -17,6 +17,19 @@ import WriteoffDialog from "@/components/modules/apple/WriteoffDialog";
    ================================================================ */
 const B = "#23675f"; const BG = "#f6f7f9"; const BD = "#d8dee6";
 const SH = "0 10px 30px rgba(16,24,40,0.08)";
+const MOVEMENT_PAGE_SIZE = 10;
+const STOCK_PAGE_SIZE = 50;
+const WRITEOFF_PAGE_SIZE = 20;
+
+function validPage(requestedPage: number, total: number, pageSize: number): number {
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  return Math.min(Math.max(1, requestedPage), totalPages);
+}
+
+function pageSlice<T>(items: T[], page: number, pageSize: number): T[] {
+  const start = (page - 1) * pageSize;
+  return items.slice(start, start + pageSize);
+}
 
 type TabKey = "stocktake" | "writeoff" | "new";
 
@@ -56,14 +69,6 @@ const MOCK_MOVEMENTS: MovementRecord[] = [
   { id:3, assetNo:"IT-2023-025", assetName:"Chromebook", fromLocation:"4樓課室", toLocation:"地下校務處", movementDate:"2026-07-01", reason:"統一管理", operator:"陳大明" },
 ];
 
-const STATS = {
-  total: MOCK_ASSETS.length,
-  active: MOCK_ASSETS.filter(a=>a.status==="active").length,
-  moved: MOCK_ASSETS.filter(a=>a.status==="moved").length,
-  writtenOff: MOCK_ASSETS.filter(a=>a.status==="written_off").length,
-  missing: MOCK_ASSETS.filter(a=>a.status==="missing").length,
-};
-
 export default function AssetsPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("stocktake");
   const [assets, setAssets] = useState<AssetRecord[]>(MOCK_ASSETS);
@@ -75,20 +80,41 @@ export default function AssetsPage() {
   const [selected, setSelected] = useState<AssetRecord|null>(null);
   const [sfilters, setSfilters] = useState<Record<string,string>>({});
   const [wfilters, setWfilters] = useState<Record<string,string>>({});
+  const [movementPage, setMovementPage] = useState(1);
+  const [stockPages, setStockPages] = useState<Record<string, number>>({});
+  const [writeoffPage, setWriteoffPage] = useState(1);
   const [form, setForm] = useState({ assetNo:"", name:"", category:"", location:"", purchaseDate:"", purchaseAmount:"", remark:"" });
   const [adding, setAdding] = useState(false);
+  const stats = {
+    total: assets.length,
+    active: assets.filter(a=>a.status==="active").length,
+    moved: assets.filter(a=>a.status==="moved").length,
+    writtenOff: assets.filter(a=>a.status==="written_off").length,
+    missing: assets.filter(a=>a.status==="missing").length,
+  };
 
   // 從後端加載真實資產數據
   useEffect(() => {
     const loadAssets = async () => {
       try {
         const { api } = await import("@/lib/api");
-        const res = await api.get<{ items?: AssetRecord[]; total?: number }>("/apple/assets?page_size=200");
-        const items = res.data?.items ?? [];
-        if (Array.isArray(items) && items.length > 0) {
-          const mapped: AssetRecord[] = items.map((item) => {
-            const a = item as unknown as Record<string, unknown>;
-            return ({
+        const allItems: Record<string, unknown>[] = [];
+        let page = 1;
+        let totalPages = 1;
+        do {
+          const res = await api.get<{
+            items?: Record<string, unknown>[];
+            total_pages?: number;
+          }>(`/apple/assets?page=${page}&page_size=100`);
+          const pageItems = Array.isArray(res.data?.items) ? res.data.items : [];
+          allItems.push(...pageItems);
+          totalPages = Math.max(1, Number(res.data?.total_pages) || 1);
+          page += 1;
+        } while (page <= totalPages);
+
+        const mapped: AssetRecord[] = allItems.map((item) => {
+          const a = item as unknown as Record<string, unknown>;
+          return {
             id: (a.id ?? a.ID) as number,
             assetNo: (a.asset_no ?? a.assetNo ?? "") as string,
             name: (a.name ?? "") as string,
@@ -100,10 +126,9 @@ export default function AssetsPage() {
             remark: (a.remark ?? "") as string,
             written_off_at: (a.written_off_at ?? a.WrittenOffAt) as string | undefined,
             written_off_reason: (a.written_off_reason ?? a.WrittenOffReason) as string | undefined,
-            });
-          });
-          setAssets(mapped);
-        }
+          };
+        });
+        setAssets(mapped);
       } catch {
         // 後端不可用，使用 MOCK_ASSETS
       }
@@ -135,16 +160,10 @@ export default function AssetsPage() {
         remark: created.remark ?? d.remark ?? "",
       };
       setAssets(p => [n, ...p]);
-    } catch {
-      // 后端不可用时回退到本地 mock
-      const n: AssetRecord = {
-        id: assets.length+1,
-        assetNo: d.assetNo || `AS-${new Date().getFullYear()}-${String(assets.length+1).padStart(3,"0")}`,
-        name:d.name, category:d.category, location:d.location, status:"active",
-        purchaseDate: d.purchaseDate||new Date().toISOString().split("T")[0],
-        purchaseAmount: d.purchaseAmount, remark: d.remark,
-      };
-      setAssets(p=>[n,...p]);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "後端寫入失敗";
+      // 发票入库属于持久化操作，失败时不可伪装成本地成功。
+      throw new Error(`資產尚未入庫：${reason}`);
     }
   };
 
@@ -258,6 +277,10 @@ export default function AssetsPage() {
     filteredStock.forEach(a=>{ const e=g.get(a.location)||[]; e.push(a); g.set(a.location,e); });
     return Array.from(g.entries());
   })();
+  const currentMovementPage = validPage(movementPage, movements.length, MOVEMENT_PAGE_SIZE);
+  const visibleMovements = pageSlice(movements, currentMovementPage, MOVEMENT_PAGE_SIZE);
+  const currentWriteoffPage = validPage(writeoffPage, filteredWriteoff.length, WRITEOFF_PAGE_SIZE);
+  const visibleWriteoff = pageSlice(filteredWriteoff, currentWriteoffPage, WRITEOFF_PAGE_SIZE);
 
   const stockCols: Column<AssetRecord>[] = [
     { key:"assetNo", header:"資產編號" },
@@ -315,7 +338,7 @@ export default function AssetsPage() {
       {/* Tab */}
       <div className="flex items-center gap-1 bg-white rounded-lg p-1 border border-[#d8dee6]" style={{boxShadow:SH}}>
         {([
-          {k:"stocktake" as TabKey, label:"盤點", n:MOCK_ASSETS.length},
+          {k:"stocktake" as TabKey, label:"盤點", n:stats.total},
           {k:"writeoff" as TabKey, label:"註銷", n:writtenOff.length},
           {k:"new" as TabKey, label:"新增", n:null as number|null},
         ]).map(t=>(
@@ -339,11 +362,11 @@ export default function AssetsPage() {
         <div className="space-y-3">
           <div className="flex items-center justify-between mb-2">
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 flex-1">
-              <StatsCard label="資產總數" value={STATS.total} icon={Package} color="text-[#23675f]" />
-              <StatsCard label="正常" value={STATS.active} icon={CheckCircle} color="text-[#027a48]" />
-              <StatsCard label="已搬移" value={STATS.moved} icon={MapPin} color="text-[#936a00]" />
-              <StatsCard label="已註銷" value={STATS.writtenOff} icon={AlertTriangle} color="text-[#667085]" />
-              <StatsCard label="找不到" value={STATS.missing} icon={AlertTriangle} color="text-[#b42318]" />
+              <StatsCard label="資產總數" value={stats.total} icon={Package} color="text-[#23675f]" />
+              <StatsCard label="正常" value={stats.active} icon={CheckCircle} color="text-[#027a48]" />
+              <StatsCard label="已搬移" value={stats.moved} icon={MapPin} color="text-[#936a00]" />
+              <StatsCard label="已註銷" value={stats.writtenOff} icon={AlertTriangle} color="text-[#667085]" />
+              <StatsCard label="找不到" value={stats.missing} icon={AlertTriangle} color="text-[#b42318]" />
             </div>
           </div>
 
@@ -358,22 +381,42 @@ export default function AssetsPage() {
               <div className="px-4 py-3 border-b border-[#d8dee6] bg-[#f8fafc]">
                 <h3 className="text-sm font-bold text-[#344054]">最近搬移記錄</h3>
               </div>
-              <DataTable columns={moveCols} data={movements} total={movements.length} page={1} pageSize={10} emptyText="暫無搬移記錄" />
+              <DataTable
+                columns={moveCols}
+                data={visibleMovements}
+                total={movements.length}
+                page={currentMovementPage}
+                pageSize={MOVEMENT_PAGE_SIZE}
+                onPageChange={setMovementPage}
+                emptyText="暫無搬移記錄"
+              />
             </div>
           )}
 
           {byLocation.length===0 ? (
             <p className="text-center text-[#667085] py-16">暫無資產數據</p>
-          ) : byLocation.map(([loc, items])=>(
-            <div key={loc} className="space-y-2">
-              <div className="flex items-center gap-2">
-                <MapPin size={16} className="text-[#667085]"/>
-                <h3 className="text-[15px] font-bold text-[#1d2939]">{loc}</h3>
-                <span className="text-xs text-[#667085]">（{items.length} 件）</span>
+          ) : byLocation.map(([loc, items])=>{
+            const currentStockPage = validPage(stockPages[loc] ?? 1, items.length, STOCK_PAGE_SIZE);
+            const visibleItems = pageSlice(items, currentStockPage, STOCK_PAGE_SIZE);
+            return (
+              <div key={loc} className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <MapPin size={16} className="text-[#667085]"/>
+                  <h3 className="text-[15px] font-bold text-[#1d2939]">{loc}</h3>
+                  <span className="text-xs text-[#667085]">（{items.length} 件）</span>
+                </div>
+                <DataTable
+                  columns={stockCols}
+                  data={visibleItems}
+                  total={items.length}
+                  page={currentStockPage}
+                  pageSize={STOCK_PAGE_SIZE}
+                  onPageChange={(page) => setStockPages((previous) => ({ ...previous, [loc]: page }))}
+                  emptyText="該地點暫無資產"
+                />
               </div>
-              <DataTable columns={stockCols} data={items} total={items.length} page={1} pageSize={50} emptyText="該地點暫無資產" />
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -381,9 +424,9 @@ export default function AssetsPage() {
       {activeTab==="writeoff" && (
         <div className="space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <StatsCard label="已註銷資產" value={STATS.writtenOff} icon={Package} color="text-[#667085]" />
+            <StatsCard label="已註銷資產" value={stats.writtenOff} icon={Package} color="text-[#667085]" />
             <StatsCard label="待審批" value={0} icon={Clock} color="text-[#936a00]" />
-            <StatsCard label="已審批" value={STATS.writtenOff} icon={CheckCircle} color="text-[#027a48]" />
+            <StatsCard label="已審批" value={stats.writtenOff} icon={CheckCircle} color="text-[#027a48]" />
           </div>
 
           <FilterBar fields={[{key:"keyword",label:"搜尋",type:"text",placeholder:"名稱／編號"}]} values={wfilters} onChange={(k,v)=>setWfilters(p=>({...p,[k]:v}))} onReset={()=>setWfilters({})} onSearch={()=>{}} />
@@ -391,7 +434,15 @@ export default function AssetsPage() {
           {filteredWriteoff.length===0 ? (
             <p className="text-center text-[#667085] py-16">暫無註銷記錄</p>
           ) : (
-            <DataTable columns={woffCols} data={filteredWriteoff} total={filteredWriteoff.length} page={1} pageSize={20} emptyText="暫無註銷記錄" />
+            <DataTable
+              columns={woffCols}
+              data={visibleWriteoff}
+              total={filteredWriteoff.length}
+              page={currentWriteoffPage}
+              pageSize={WRITEOFF_PAGE_SIZE}
+              onPageChange={setWriteoffPage}
+              emptyText="暫無註銷記錄"
+            />
           )}
         </div>
       )}

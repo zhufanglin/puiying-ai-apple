@@ -1,216 +1,312 @@
 /**
- * 發票 OCR 文本解析器 — 用於資產登記
+ * 發票 OCR 文本的保守解析器。
  *
- * 支持中英文發票，多策略逐行提取字段。
- *
- * 輸出: { assetName, category, amount, purchaseDate, vendor, confidence, warnings, raw_text }
+ * 這是 DeepSeek 結構化不可用時的安全回退：只回填有明確標籤及證據的欄位，
+ * 寧可留空讓使用者核對，也不把發票號、電話或買方資料誤當資產資料。
  */
 
 import type { OcrResult } from "./ocr-engine";
 
+export type AssetCategory = "IT設備" | "傢俱" | "電器" | "辦公設備" | "其他";
+
 export interface InvoiceResult {
   assetName: string;
-  category: string;
+  category: AssetCategory | "";
   amount: number;
+  currency: "HKD" | "";
   purchaseDate: string;
   vendor: string;
+  invoiceNo: string;
+  multipleItems: boolean;
   confidence: "low" | "medium" | "high";
   warnings: string[];
   raw_text: string;
 }
 
-// ================================================================
-// 類別關鍵詞映射
-// ================================================================
+const CATEGORY_KEYWORDS: Array<[RegExp, AssetCategory]> = [
+  [/(?:電腦|计算机|計算機|筆記本|笔记本|平板|laptop|desktop|ipad|chromebook|computer|monitor|server|掃描儀|扫描仪|伺服器|服务器|顯示器|显示器|鍵盤|键盘|滑鼠|鼠标|mouse|keyboard)/i, "IT設備"],
+  [/(?:桌|椅|櫃|柜|架|梳化|沙發|沙发|牀|床|desk|chair|cabinet|shelf|文件櫃|文件柜|書櫃|书柜|辦公桌|办公桌)/i, "傢俱"],
+  [/(?:空調|空调|冷氣|冷气|投影|音響|音响|電視|电视|風扇|风扇|暖爐|暖炉|雪櫃|雪柜|冰箱|微波爐|微波炉|熱水|热水|aircon|projector|speaker|\btv\b)/i, "電器"],
+  [/(?:打印機|打印机|printer|電話|电话|傳真|传真|影印|複印|复印|phone|fax|copier)/i, "辦公設備"],
+];
 
-const CATEGORY_KEYWORDS: Record<string, string> = {
-  "電腦": "IT設備", "計算機": "IT設備", "筆記本": "IT設備", "平板": "IT設備",
-  "laptop": "IT設備", "desktop": "IT設備", "ipad": "IT設備", "chromebook": "IT設備",
-  "打印機": "IT設備", "掃描儀": "IT設備", "伺服器": "IT設備", "顯示器": "IT設備",
-  "monitor": "IT設備", "printer": "IT設備", "server": "IT設備", "鍵盤": "IT設備",
-  "滑鼠": "IT設備", "mouse": "IT設備", "keyboard": "IT設備", "computer": "IT設備",
-  "桌": "傢俱", "椅": "傢俱", "櫃": "傢俱", "架": "傢俱",
-  "梳化": "傢俱", "沙發": "傢俱", "牀": "傢俱",
-  "desk": "傢俱", "chair": "傢俱", "cabinet": "傢俱", "shelf": "傢俱",
-  "文件櫃": "傢俱", "書櫃": "傢俱", "辦公桌": "傢俱",
-  "空調": "電器", "冷氣": "電器", "投影": "電器", "音響": "電器",
-  "電視": "電器", "風扇": "電器", "暖爐": "電器", "雪櫃": "電器",
-  "冰箱": "電器", "微波爐": "電器", "熱水": "電器",
-  "aircon": "電器", "projector": "電器", "speaker": "電器", "tv": "電器",
-  "電話": "辦公設備", "傳真": "辦公設備", "影印": "辦公設備",
-  "phone": "辦公設備", "fax": "辦公設備", "copier": "辦公設備",
-};
+const ASSET_LABEL = /^(?:品名|貨品|货品|商品|產品|产品|product|item|description)\s*[：:]\s*(.+)$/i;
+const VENDOR_LABEL = /^(?:供應商|供应商|賣方|卖方|賣家|卖家|vendor|supplier|seller)\s*[：:]\s*(.+)$/i;
+const BUYER_LABEL = /^(?:bill\s*to|sold\s*to|ship\s*to|buyer|customer|客戶|客户|買方|买方|收貨人|收货人)\b/i;
+const INVOICE_NO_LABEL = /^(?:invoice\s*(?:no\.?|number|#)|發票(?:號|号码|號碼)|发票(?:号|号码)|單據編號|单据编号)\s*[：:#.]?\s*([A-Z0-9][A-Z0-9/_-]{1,63})\s*$/i;
+const INVOICE_DATE_LABEL = /(?:invoice\s*date|發票日期|发票日期|單據日期|单据日期)/i;
+const EXCLUDED_DATE_LABEL = /(?:due\s*date|delivery\s*date|payment\s*date|到期日|交貨日期|交货日期|付款日期)/i;
+const INVOICE_TOTAL_LABEL = /(?:grand\s*total|invoice\s*total|total\s*amount|\btotal\b|總額|总额|合計|合计)/i;
+const BALANCE_DUE_LABEL = /(?:amount\s*due|balance\s*due|應付|应付)/i;
+const EXCLUDED_AMOUNT_LABEL = /(?:sub[\s-]*total|tax|vat|discount|shipping|freight|deposit|unit\s*price|total\s*items?|quantity|qty|小計|小计|稅|税|折扣|運費|运费|訂金|订金|單價|单价|數量|数量)/i;
+const EXPLICIT_HKD = /(?:HKD|HK\$|港幣|港币|港元)/i;
+const FOREIGN_CURRENCY = /(?:USD|US\$|EUR|GBP|CNY|RMB|JPY|AUD|CAD|MOP|人民幣|人民币|美元|歐元|欧元|英鎊|英镑|日圓|日元)/i;
+const PAYMENT_OR_CREDIT_CONTEXT = /(?:\bpaid\b|payment|deposit|credit|refund|已付|付款|訂金|订金|退款|貸項|贷项)/i;
+const CREDIT_DOCUMENT_CONTEXT = /(?:\bcredit\s*(?:note|memo|advice|invoice)\b|^\s*credit(?:\s*(?:no\.?|#)\s*\S+)?\s*$|貸項通知|贷项通知|紅字發票|红字发票|退款單|退款单)/i;
 
-function inferCategory(name: string): string {
-  const lower = name.toLowerCase();
-  for (const [keyword, category] of Object.entries(CATEGORY_KEYWORDS)) {
-    if (lower.includes(keyword.toLowerCase())) {
-      return category;
+function cleanLines(ocrResult: OcrResult): string[] {
+  const source = ocrResult.lines.length > 0
+    ? ocrResult.lines.map((line) => line.text)
+    : ocrResult.text.split(/\r?\n/);
+  return source
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+}
+
+function unique(values: string[]): string[] {
+  return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
+}
+
+function extractLabeledValues(lines: string[], pattern: RegExp): string[] {
+  return unique(extractLabeledOccurrences(lines, pattern));
+}
+
+function extractLabeledOccurrences(lines: string[], pattern: RegExp): string[] {
+  const values: string[] = [];
+  for (const line of lines) {
+    const match = line.match(pattern);
+    if (match?.[1]?.trim()) values.push(match[1].trim());
+  }
+  return values;
+}
+
+function inferCategory(name: string): AssetCategory | "" {
+  if (!name) return "";
+  for (const [pattern, category] of CATEGORY_KEYWORDS) {
+    if (pattern.test(name)) return category;
+  }
+  return "";
+}
+
+function isValidDate(year: number, month: number, day: number): boolean {
+  if (year < 2000 || year > 2100 || month < 1 || month > 12 || day < 1 || day > 31) return false;
+  const value = new Date(Date.UTC(year, month - 1, day));
+  return value.getUTCFullYear() === year
+    && value.getUTCMonth() === month - 1
+    && value.getUTCDate() === day;
+}
+
+function toISODate(year: number, month: number, day: number): string | null {
+  if (!isValidDate(year, month, day)) return null;
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function parseDateFromLine(line: string): { value: string | null; ambiguous: boolean } {
+  let match = line.match(/\b(20\d{2})[-/](\d{1,2})[-/](\d{1,2})\b/);
+  if (match) {
+    return { value: toISODate(Number(match[1]), Number(match[2]), Number(match[3])), ambiguous: false };
+  }
+
+  match = line.match(/(20\d{2})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/);
+  if (match) {
+    return { value: toISODate(Number(match[1]), Number(match[2]), Number(match[3])), ambiguous: false };
+  }
+
+  match = line.match(/\b(\d{1,2})[-/](\d{1,2})[-/](20\d{2})\b/);
+  if (!match) return { value: null, ambiguous: false };
+
+  const first = Number(match[1]);
+  const second = Number(match[2]);
+  const year = Number(match[3]);
+  if (first <= 12 && second <= 12) return { value: null, ambiguous: true };
+  if (first > 12 && second <= 12) {
+    return { value: toISODate(year, second, first), ambiguous: false };
+  }
+  if (second > 12 && first <= 12) {
+    return { value: toISODate(year, first, second), ambiguous: false };
+  }
+  return { value: null, ambiguous: false };
+}
+
+function extractPurchaseDate(lines: string[]): { value: string; ambiguous: boolean; conflicting: boolean } {
+  const values: string[] = [];
+  let ambiguous = false;
+
+  for (const line of lines) {
+    if (!INVOICE_DATE_LABEL.test(line) || EXCLUDED_DATE_LABEL.test(line)) continue;
+    const parsed = parseDateFromLine(line);
+    ambiguous ||= parsed.ambiguous;
+    if (parsed.value) values.push(parsed.value);
+  }
+
+  const distinct = unique(values);
+  return {
+    value: distinct.length === 1 && !ambiguous ? distinct[0]! : "",
+    ambiguous,
+    conflicting: distinct.length > 1,
+  };
+}
+
+function parseHKDAmount(line: string): number | null {
+  if (
+    /[-−–—]\s*(?:(?:HKD|HK\$|港幣|港币|港元)\s*)?\d/i.test(line)
+    || /(?:HKD|HK\$|港幣|港币|港元)\s*[-−–—]\s*\d/i.test(line)
+    || /[（(]\s*(?:(?:HKD|HK\$|港幣|港币|港元)\s*)?\d[\d,.]*\s*(?:(?:HKD|HK\$|港幣|港币|港元)\s*)?[)）]/i.test(line)
+    || /\d[\d,.]*\s*[-−–—](?:\s|$)/.test(line)
+    || /(?:\b(?:CR|CREDIT)\s*(?:(?:HKD|HK\$|港幣|港币|港元)\s*)?\d|\d[\d,.]*\s*(?:CR|CREDIT)\b|\bcredit\s*note\b)/i.test(line)
+  ) {
+    return null;
+  }
+  const numberPattern = "((?:\\d{1,3}(?:,\\d{3})+|\\d+)(?:\\.\\d{1,2})?)";
+  const before = new RegExp(`(?:HKD|HK\\$|港幣|港币|港元)\\s*[：:]?\\s*${numberPattern}(?![\\d,.])`, "i");
+  const after = new RegExp(`(?:^|[^\\d,.])${numberPattern}(?![\\d,.])\\s*(?:HKD|HK\\$|港幣|港币|港元)`, "i");
+  const match = line.match(before) ?? line.match(after);
+  if (!match?.[1]) return null;
+  const amount = Number(match[1].replace(/,/g, ""));
+  return Number.isFinite(amount) && amount > 0 ? amount : null;
+}
+
+function extractTotalAmount(lines: string[]): {
+  amount: number;
+  currency: "HKD" | "";
+  conflicting: boolean;
+  totalWithoutHKD: boolean;
+  creditDocument: boolean;
+} {
+  const creditDocument = lines.some((line) => CREDIT_DOCUMENT_CONTEXT.test(line));
+  if (creditDocument) {
+    return {
+      amount: 0,
+      currency: "",
+      conflicting: false,
+      totalWithoutHKD: false,
+      creditDocument: true,
+    };
+  }
+
+  const values: number[] = [];
+  let totalWithoutHKD = false;
+  const invoiceTotalLines = lines.filter((line) =>
+    INVOICE_TOTAL_LABEL.test(line) && !EXCLUDED_AMOUNT_LABEL.test(line),
+  );
+  const candidateLines = invoiceTotalLines.length > 0
+    ? invoiceTotalLines
+    : (lines.some((line) => PAYMENT_OR_CREDIT_CONTEXT.test(line))
+      ? []
+      : lines.filter((line) => BALANCE_DUE_LABEL.test(line) && !EXCLUDED_AMOUNT_LABEL.test(line)));
+
+  for (const line of candidateLines) {
+    if (!EXPLICIT_HKD.test(line) || FOREIGN_CURRENCY.test(line)) {
+      totalWithoutHKD = true;
+      continue;
     }
+    const amount = parseHKDAmount(line);
+    if (amount !== null) values.push(amount);
   }
-  return "其他";
+
+  const distinct = Array.from(new Set(values));
+  return {
+    amount: distinct.length === 1 ? distinct[0]! : 0,
+    currency: distinct.length === 1 ? "HKD" : "",
+    conflicting: distinct.length > 1,
+    totalWithoutHKD,
+    creditDocument: false,
+  };
 }
 
-// ================================================================
-// 標籤匹配模式
-// ================================================================
-
-const LABEL_PATTERNS = {
-  assetName: [/品名[：:\s]*(.+)/, /貨品[：:\s]*(.+)/, /商品[：:\s]*(.+)/, /產品[：:\s]*(.+)/, /Product[：:\s]*(.+)/i, /Item[：:\s]*(.+)/i, /Description[：:\s]*(.+)/i],
-  vendor: [/供應商[：:\s]*(.+)/, /賣方[：:\s]*(.+)/, /賣家[：:\s]*(.+)/, /公司[：:\s]*(.+)/, /Vendor[：:\s]*(.+)/i, /Supplier[：:\s]*(.+)/i, /From[：:\s]*(.+)/i, /Bill To[：:\s]*(.+)/i, /Sold To[：:\s]*(.+)/i],
-};
-
-// ================================================================
-// 工具函數
-// ================================================================
-
-/** 從一行文本提取 yyyy-mm-dd 格式日期 */
-function extractDateFromLine(line: string): string | null {
-  // 2026-07-10 / 2026/07/10
-  let m = line.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
-  if (m) return `${m[1]}-${m[2]!.padStart(2, "0")}-${m[3]!.padStart(2, "0")}`;
-  // 10/07/2026
-  m = line.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-  if (m) return `${m[3]}-${m[1]!.padStart(2, "0")}-${m[2]!.padStart(2, "0")}`;
-  // 2026年7月10日
-  m = line.match(/(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/);
-  if (m) return `${m[1]}-${m[2]!.padStart(2, "0")}-${m[3]!.padStart(2, "0")}`;
-  return null;
+function extractInvoiceNo(lines: string[]): string {
+  const values = extractLabeledValues(lines, INVOICE_NO_LABEL);
+  return values.length === 1 ? values[0]! : "";
 }
 
-/** 從一行文本提取金額 */
-function extractAmountFromLine(line: string): { amount: number; source: string } | null {
-  // HKD 7,200.00 / HK$ 7,200.00
-  let m = line.match(/HKD?\s*\$?\s*([\d,]+\.?\d*)/i);
-  if (m) return { amount: parseFloat(m[1]!.replace(/,/g, "")), source: m[0] };
-  // HK$ 7,200.00
-  m = line.match(/HK\$\s*([\d,]+\.?\d*)/i);
-  if (m) return { amount: parseFloat(m[1]!.replace(/,/g, "")), source: m[0] };
-  // $7,200.00
-  m = line.match(/\$\s*([\d,]+\.\d{2})/);
-  if (m) return { amount: parseFloat(m[1]!.replace(/,/g, "")), source: m[0] };
-  // 純金額行: 單個整數 ≥100
-  m = line.match(/^(\d{3,})$/);
-  if (m) return { amount: parseInt(m[1]!), source: m[1]! };
-  return null;
+function extractVendor(lines: string[]): string {
+  const values = extractLabeledValues(lines, VENDOR_LABEL)
+    .filter((value) => !BUYER_LABEL.test(value));
+  return values.length === 1 ? values[0]! : "";
 }
 
-/** 判斷一行是否為噪音（頁碼、空行、純符號等） */
-function isNoise(line: string): boolean {
-  if (!line.trim()) return true;
-  if (/^(Page|頁碼|QTY|UNIT|Subtotal|Tax|VAT|Discount|Shipping|\(continued\))$/i.test(line)) return true;
-  if (/^[\d\s\.\-_/\\|]+$/.test(line) && line.length < 6) return true;
-  return false;
-}
+function hasConfirmedSingleQuantity(lines: string[], assetLineIndex: number): boolean {
+  const quantities: Array<{ lineIndex: number; value: number }> = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index]!;
+    const labeledPattern = /(?:^|\b)(?:qty|quantity|數量|数量|total\s*items?|貨品總數|货品总数|項目總數|项目总数)\s*[：:]?\s*(\d+)\b/gi;
+    let labeled = labeledPattern.exec(line);
+    while (labeled) {
+      quantities.push({ lineIndex: index, value: Number(labeled[1]) });
+      labeled = labeledPattern.exec(line);
+    }
 
-/** 行以標籤開頭（品名: xxx / Vendor: xxx） */
-function extractLabeledField(line: string, patterns: RegExp[]): string | null {
-  for (const re of patterns) {
-    const m = line.match(re);
-    if (m?.[1]?.trim()) return m[1].trim();
+    if (/^(?:qty|quantity|數量|数量|total\s*items?|貨品總數|货品总数|項目總數|项目总数)\s*[：:]?$/i.test(line)) {
+      const nextValue = lines[index + 1]?.match(/^(\d+)\b/);
+      if (nextValue) quantities.push({ lineIndex: index, value: Number(nextValue[1]) });
+    }
+
+    const multiplied = line.match(
+      /(?:\b(\d+)(?:\s+[xX]\s+|\s*×\s*)\S|\S(?:.*\S)?(?:\s+[xX]\s+|\s*×\s*)(\d+)\b)/,
+    );
+    const multipliedValue = multiplied?.[1] ?? multiplied?.[2];
+    if (multipliedValue) quantities.push({ lineIndex: index, value: Number(multipliedValue) });
   }
-  return null;
-}
 
-// ================================================================
-// 主解析函數 — 多策略
-// ================================================================
+  return quantities.length === 1
+    && quantities[0]!.value === 1
+    && quantities[0]!.lineIndex >= assetLineIndex
+    && quantities[0]!.lineIndex <= assetLineIndex + 1;
+}
 
 export function parseInvoice(ocrResult: OcrResult): InvoiceResult {
-  const rawText = ocrResult.text;
-  const allLines = ocrResult.lines.map((l) => l.text).filter((l) => !isNoise(l));
+  const lines = cleanLines(ocrResult);
+  const assetOccurrences = lines.flatMap((line, lineIndex) => {
+    const match = line.match(ASSET_LABEL);
+    return match?.[1]?.trim() ? [{ lineIndex, value: match[1].trim() }] : [];
+  });
+  const rawAssetNames = assetOccurrences.map(({ value }) =>
+    value
+      .replace(/\s+(?:qty|quantity|數量|数量)\s*[：:]?\s*\d+\s*$/i, "")
+      .replace(/(?:\s+[xX]\s+|\s*×\s*)\d+\s*$/, "")
+      .trim(),
+  );
+  // 必須剛好找到一個有標籤的貨品名稱，且有明确数量 1 的证据。
+  const multipleItems = rawAssetNames.length !== 1
+    || !hasConfirmedSingleQuantity(lines, assetOccurrences[0]?.lineIndex ?? -1);
+  const amountResult = extractTotalAmount(lines);
+  const dateResult = extractPurchaseDate(lines);
+  const vendor = extractVendor(lines);
+  const invoiceNo = extractInvoiceNo(lines);
 
-  // ── 策略1: 標籤匹配 ──
-  const joinedText = allLines.join("\n");
-  let assetName = "";
-  let vendor = "";
-
-  for (const line of allLines) {
-    const name = extractLabeledField(line, LABEL_PATTERNS.assetName);
-    if (name && !assetName) assetName = name;
-    const ven = extractLabeledField(line, LABEL_PATTERNS.vendor);
-    if (ven && !vendor) vendor = ven;
-  }
-
-  // ── 策略2: 逐行掃描提取日期/金額 ──
-  let purchaseDate = "";
-  let amount = 0;
-  let amountSource = "";
-
-  for (const line of allLines) {
-    // 日期
-    if (!purchaseDate) {
-      const d = extractDateFromLine(line);
-      if (d) purchaseDate = d;
-    }
-    // 金額（取帶 HKD/HK$ 的，沒有則取最大數字）
-    const amt = extractAmountFromLine(line);
-    if (amt) {
-      // 優先使用帶貨幣標記的
-      const hasCurrency = /HKD|HK\$|\$/i.test(amt.source);
-      if (hasCurrency && (!amountSource || !/HKD|HK\$|\$/i.test(amountSource))) {
-        amount = amt.amount;
-        amountSource = amt.source;
-      } else if (!amountSource && amt.amount >= 100) {
-        amount = amt.amount;
-        amountSource = amt.source;
-      }
-    }
-  }
-
-  // ── 策略3: 智能推斷 — 發票號作為參考 ──
-  // 找類似 "INV-xxx" / "TEST-xxx" 的發票號 → 存入備註
-  let invoiceNo = "";
-  for (const line of allLines) {
-    const m = line.match(/^(?:INVOICE|INV|TEST|REF|NO|#)[-:\s]*([A-Z0-9][-A-Z0-9]+)$/i);
-    if (m) { invoiceNo = m[1] || m[0]; break; }
-  }
-
-  // ── 策略4: 找疑似公司名/資產名的行 ──
-  if (!assetName || !vendor) {
-    for (const line of allLines) {
-      const t = line.trim();
-      // 跳過已識別的日期/金額/發票號
-      if (!t || extractDateFromLine(t) || extractAmountFromLine(t) || isNoise(t)) continue;
-      if (t === invoiceNo || t === "INVOICE") continue;
-      // 長字符串 → 可能是公司名或品名
-      if (t.length >= 4) {
-        if (!vendor && /(?:公司|LIMITED|LTD|INC|CO\.|CORP|enterprise|company|limited|ltd|inc|corp)/i.test(t)) {
-          vendor = t;
-        } else if (!assetName && t.length >= 4 && t.length <= 200) {
-          assetName = t;
-        }
-      }
-    }
-  }
-
-  // ── 組裝結果 ──
-  const category = inferCategory(assetName);
-  const filled = [assetName !== "", amount > 0, purchaseDate !== "", vendor !== ""].filter(Boolean).length;
-  let confidence: "low" | "medium" | "high";
-  if (filled >= 3 && ocrResult.confidence >= 60) confidence = "high";
-  else if (filled >= 2) confidence = "medium";
-  else confidence = "low";
+  const assetName = multipleItems || rawAssetNames.length !== 1 ? "" : rawAssetNames[0]!;
+  const category = multipleItems ? "" : inferCategory(assetName);
+  const amount = multipleItems ? 0 : amountResult.amount;
+  const currency = multipleItems ? "" : amountResult.currency;
+  const purchaseDate = dateResult.value;
 
   const warnings: string[] = [];
-  if (!assetName) warnings.push("未能識別資產名稱，請手動填寫");
-  if (amount === 0) warnings.push("未能識別金額，請手動填寫");
-  if (!purchaseDate) warnings.push("未能識別購買日期");
-  if (!vendor) warnings.push("未能識別供應商");
-  if (invoiceNo && !assetName) warnings.push(`已識別發票號 ${invoiceNo}，請手動輸入資產名稱`);
-  if (ocrResult.confidence < 50) warnings.push("OCR 識別信心較低，建議仔細核對");
+  if (multipleItems) warnings.push("發票包含多項貨品，或無法確認只有一項資產；未自動合併，請對照原圖逐項登記");
+  if (!assetName) warnings.push("未能可靠識別單一資產名稱，請對照原圖填寫");
+  if (assetName && !category) warnings.push("未能可靠判斷資產類別，請手動選擇");
+  if (amountResult.creditDocument) warnings.push("檢測到貸項通知／退款單，未自動填寫正數購買金額");
+  else if (amountResult.conflicting) warnings.push("發票出現多個不同的 HKD 總額，未自動填寫金額");
+  else if (!amountResult.amount) {
+    warnings.push(amountResult.totalWithoutHKD
+      ? "總額未標明 HKD／HK$／港幣，未自動假定貨幣及金額"
+      : "未找到明確標示 HKD 的發票總額，請手動填寫");
+  }
+  if (dateResult.ambiguous) warnings.push("發票日期的日/月次序有歧義，未自動填寫");
+  else if (dateResult.conflicting) warnings.push("發票出現多個不同的發票日期，未自動填寫");
+  else if (!purchaseDate) warnings.push("未找到明確的發票日期，請手動填寫");
+  if (!vendor) warnings.push("未能可靠識別賣方／供應商；Bill To、Sold To 等買方資料不會自動採用");
+  if (!invoiceNo) warnings.push("未能可靠識別發票號碼");
+  if (ocrResult.confidence < 50) warnings.push("OCR 識別信心較低，請仔細核對原圖");
 
-  // 備註：把發票號歸入 vendor 用於前端展示
-  if (!vendor && invoiceNo) vendor = invoiceNo;
+  const coreComplete = Boolean(assetName && amount > 0 && currency === "HKD" && purchaseDate);
+  let confidence: InvoiceResult["confidence"] = "low";
+  if (!multipleItems && coreComplete && category && vendor && ocrResult.confidence >= 80) {
+    confidence = "high";
+  } else if (!multipleItems && coreComplete && ocrResult.confidence >= 50) {
+    confidence = "medium";
+  }
 
   return {
     assetName,
     category,
     amount,
+    currency,
     purchaseDate,
     vendor,
+    invoiceNo,
+    multipleItems,
     confidence,
     warnings,
-    raw_text: rawText,
+    raw_text: ocrResult.text,
   };
 }
