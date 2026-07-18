@@ -13,7 +13,7 @@ class AuditLog(Base, TimestampMixin):
     __tablename__ = "audit_logs"
 
     user_id: Mapped[int] = mapped_column(comment="操作人 user_id")
-    username: Mapped[str] = mapped_column(String(50), comment="操作人用户名（冗余，便于查询）")
+    username: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, comment="操作人用户名（冗余，便于查询）")
     action: Mapped[str] = mapped_column(String(20), comment="动作: create / update / delete / approve / reject / export")
     module: Mapped[str] = mapped_column(String(50), comment="归属模块")
     entity_type: Mapped[str] = mapped_column(String(50), comment="实体类型: award / receipt / asset / student")

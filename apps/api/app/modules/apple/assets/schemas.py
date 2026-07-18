@@ -2,10 +2,11 @@
 
 严格按任务指南 §5.1 字段定义。
 """
+from datetime import datetime
 from decimal import Decimal
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 # ============== 资产 ==============
@@ -51,7 +52,16 @@ class AssetResponse(BaseModel):
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def _validate_dt(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, datetime):
+            return v.isoformat()
+        return str(v)
 
 
 # ============== 资产移动 ==============
@@ -75,7 +85,16 @@ class AssetMovementResponse(BaseModel):
     created_by: int
     created_at: Optional[str] = None
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _validate_dt(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, datetime):
+            return v.isoformat()
+        return str(v)
 
 
 # ============== 盘点 ==============

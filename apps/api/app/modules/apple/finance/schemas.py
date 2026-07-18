@@ -2,10 +2,11 @@
 
 严格按任务指南 §4.2 字段定义。
 """
+from datetime import datetime
 from decimal import Decimal
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 # ============== 收支记录 ==============
@@ -54,7 +55,16 @@ class FinanceRecordResponse(BaseModel):
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def _validate_dt(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, datetime):
+            return v.isoformat()
+        return str(v)
 
 
 # ============== 报价单 ==============
@@ -82,7 +92,16 @@ class QuotationResponse(BaseModel):
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def _validate_dt(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, datetime):
+            return v.isoformat()
+        return str(v)
 
 
 # ============== 报价分析（AI） ==============

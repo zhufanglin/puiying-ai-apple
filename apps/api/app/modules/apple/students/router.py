@@ -14,7 +14,7 @@ from app.modules.apple.students.score_service import ScoreService
 from app.modules.apple.students.schemas import CertificateCreate, StudentCreate, StudentUpdate
 from app.modules.apple.students.student_service import StudentConflictError, StudentNotFoundError, StudentService
 
-router = APIRouter(prefix="/api/v1/apple/students", tags=["Apple - 学生事务"])
+router = APIRouter(prefix="", tags=["Apple - 学生事务"])
 
 
 def response(data: Any, **extra: Any) -> dict[str, Any]:
