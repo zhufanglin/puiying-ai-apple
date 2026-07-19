@@ -209,7 +209,9 @@ def _normalize_currency(value: Any, warnings: list[str]) -> str | None:
     compact = re.sub(r"\s+", "", value).casefold()
     if compact in {"hkd", "hk$", "hkd$", "港幣", "港币", "港元"}:
         return "HKD"
-    _append_warning(warnings, "模型币别不是明确的港币标记，已清空")
+    if compact in {"cny", "rmb", "¥", "￥", "人民币", "元"}:
+        return "CNY"
+    _append_warning(warnings, "模型币别不是明确的货币标记，已清空")
     return None
 
 
@@ -441,10 +443,16 @@ def _has_text_evidence(value: str | None, source: str) -> bool:
 
 def _money_candidates(text: str) -> list[float]:
     patterns = [
-        rf"(?:HK\$|HKD|港幣|港币|港元)\s*\$?\s*{_MONEY_NUMBER_PATTERN}",
-        r"(?:金額|金额|總額|总额|合計|合计)[：:\s]*"
-        rf"(?:HK\$|HKD|港幣|港币|港元|\$)?\s*{_MONEY_NUMBER_PATTERN}",
-        rf"\$\s*{_MONEY_NUMBER_PATTERN}",
+        # HKD
+        rf"(?:HK[$]|HKD|港幣|港币|港元)\s*[$]?\s*{_MONEY_NUMBER_PATTERN}",
+        # RMB
+        rf"(?:RMB|CNY|人民币)\s*[：:]*\s*[¥￥]?\s*{_MONEY_NUMBER_PATTERN}",
+        rf"[¥￥□]\s*{_MONEY_NUMBER_PATTERN}",
+        rf"{_MONEY_NUMBER_PATTERN}\s*元",
+        # 标签前缀（支持□被OCR误读的符号）
+        r"(?:金額|金额|總額|总额|合計|合计|小写)[：:\s]*"
+        rf"(?:HK[$]|HKD|港幣|港币|港元|RMB|CNY|人民币|¥|￥|[$]|□)?\s*{_MONEY_NUMBER_PATTERN}",
+        rf"[$]\s*{_MONEY_NUMBER_PATTERN}",
     ]
     candidates: list[float] = []
     for pattern in patterns:
@@ -499,10 +507,15 @@ def _validate_evidence(
             _append_warning(warnings, "模型金额缺少货币或金额标签证据，已清空并要求人工填写")
 
     if fields.currency == "HKD" and not re.search(
-        r"HK\$|HKD|港幣|港币|港元", source, re.I
+        r"HK[$]|HKD|港幣|港币|港元", source, re.I
     ):
         fields.currency = None
         _append_warning(warnings, "OCR 原文没有明确币别，币别未自动确认")
+    if fields.currency == "CNY" and not re.search(
+        r"RMB|CNY|人民币|[¥￥]|\b元\b", source, re.I
+    ):
+        fields.currency = None
+        _append_warning(warnings, "OCR 原文没有明确人民币标记，币别未自动确认")
 
     if fields.date is not None and fields.date not in _date_candidates(source):
         fields.date = None

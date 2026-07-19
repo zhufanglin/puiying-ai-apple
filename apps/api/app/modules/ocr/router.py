@@ -1,6 +1,9 @@
 """OCR 异步任务路由。"""
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+import sys
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, Header, HTTPException, UploadFile, File, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,6 +24,20 @@ from app.modules.ocr.schemas import (
     ReceiptAIStructureRequest,
     ReceiptAIStructureResponse,
 )
+
+# 让 API 也能 import worker 的 OCR 引擎
+_worker_root = Path(__file__).resolve().parents[5] / "workers" / "ocr_worker" / "services"
+if str(_worker_root) not in sys.path:
+    sys.path.insert(0, str(_worker_root))
+
+# 在模块加载时预加载 PaddleOCR，避免 HTTP 请求时首次加载导致进程崩溃
+_paddle_backend = None
+try:
+    from ocr_engine import PaddleOcrBackend
+    _paddle_backend = PaddleOcrBackend()
+    print("[OCR] PaddleOCR backend loaded successfully")
+except Exception as _e:
+    print(f"[OCR] PaddleOCR backend NOT available: {_e}")
 
 router = APIRouter()
 
@@ -118,3 +135,55 @@ async def structure_invoice(
     except AIInvoiceError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     return APIResponse(data=result)
+
+
+@router.post("/recognize")
+async def paddle_recognize(
+    file: UploadFile = File(),
+):
+    """PaddleOCR 本地同步识别（无需 API key，无需 AI）。"""
+    import tempfile
+    from PIL import Image
+
+    suffix = Path(file.filename or "image.png").suffix or ".png"
+    try:
+        contents = await file.read()
+    except Exception:
+        raise HTTPException(status_code=400, detail="无法读取上传文件")
+
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+        tmp.write(contents)
+        tmp_path = tmp.name
+
+    try:
+        # 压缩大图：手机拍摄的照片通常 3000+ 像素，PaddleOCR 处理极慢
+        # 缩放到长边不超过 1000px，识别速度提升 10x+，精度基本无损
+        MAX_DIM = 1000
+        img = Image.open(tmp_path)
+        w, h = img.size
+        if max(w, h) > MAX_DIM:
+            ratio = MAX_DIM / max(w, h)
+            new_size = (int(w * ratio), int(h * ratio))
+            img = img.resize(new_size, Image.LANCZOS)
+            img.save(tmp_path)
+        img.close()  # 释放文件句柄，Windows 下必须关闭
+
+        if _paddle_backend is None:
+            raise RuntimeError("PaddleOCR 后端未加载")
+        result = _paddle_backend.extract(Path(tmp_path))
+        return {
+            "text": result.text,
+            "confidence": result.confidence,
+            "engine": result.engine,
+            "lines": [
+                {"text": t, "confidence": c}
+                for t, c in zip(
+                    result.text.split("\n"),
+                    [result.confidence] * len(result.text.split("\n")),
+                )
+            ] if result.text else [],
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"PaddleOCR 识别失败：{e}")
+    finally:
+        Path(tmp_path).unlink(missing_ok=True)

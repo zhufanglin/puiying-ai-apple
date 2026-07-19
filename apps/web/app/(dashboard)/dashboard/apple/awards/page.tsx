@@ -33,7 +33,7 @@ export default function AwardsPage() {
   const fetchAwards = async () => {
     try {
       const token = localStorage.getItem("token");
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8100";
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
       const res = await fetch(`${apiBase}/api/v1/apple/awards`, {
         headers: { Authorization: `Bearer ${token}` },
       });

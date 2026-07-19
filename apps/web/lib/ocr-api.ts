@@ -32,7 +32,7 @@ interface OcrJob {
 export interface ServerOcrResult {
   ocr: OcrResult;
   fileId: number | null;
-  engine: "baidu_ocr" | "tesseract_js";
+  engine: "baidu_ocr" | "paddleocr" | "tesseract_js";
   structured?: ServerStructuredResult;
   fallbackReason?: string;
 }
@@ -136,6 +136,35 @@ async function recognizeWithBaidu(
  * 优先使用后端百度 OCR；API、Redis、Worker 或百度服务不可用时，
  * 自动回退到浏览器 Tesseract.js，保证演示仍可继续。
  */
+async function recognizeWithPaddle(
+  file: File,
+  onProgress?: (pct: number) => void,
+): Promise<OcrResult> {
+  onProgress?.(0.1);
+  const form = new FormData();
+  form.append("file", file);
+  const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const res = await fetch(`${BASE}/api/v1/ocr/recognize`, {
+    method: "POST",
+    body: form,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || "PaddleOCR 后端不可用");
+  }
+  onProgress?.(0.9);
+  const data = await res.json();
+  return {
+    text: data.text || "",
+    confidence: data.confidence || 0,
+    engine: "paddleocr",
+    lines: (data.lines || []).map((l: { text: string; confidence: number }) => ({
+      text: l.text,
+      confidence: l.confidence,
+    })),
+  } as OcrResult;
+}
+
 export async function recognizeWithServerFallback(
   file: File,
   options: {
@@ -145,24 +174,25 @@ export async function recognizeWithServerFallback(
     onProgress?: (progress: number) => void;
   },
 ): Promise<ServerOcrResult> {
-  let fileId: number | null = null;
+  // 1) 优先使用后端 PaddleOCR（高性能本地引擎，无需 API key）
   try {
-    const result = await recognizeWithBaidu(
-      file,
-      options.module,
-      options.jobType,
-      options.onProgress,
-    );
-    fileId = result.fileId;
-    return { ...result, engine: "baidu_ocr" };
-  } catch (error) {
-    if (error instanceof ServerOcrError) fileId = error.fileId;
-    const fallbackReason = error instanceof Error ? error.message : "百度 OCR 不可用";
-    options.onProgress?.(0);
-    const ocr = await recognizeImage(file, {
-      language: options.language,
-      onProgress: options.onProgress,
-    });
-    return { ocr, fileId, engine: "tesseract_js", fallbackReason };
+    options.onProgress?.(0.1);
+    const ocr = await recognizeWithPaddle(file, options.onProgress);
+    return { ocr, fileId: null, engine: "paddleocr" };
+  } catch (_paddleError) {
+    // PaddleOCR 不可用，回退浏览器 Tesseract.js
   }
+
+  // 2) 回退浏览器 Tesseract.js（离线兜底）
+  options.onProgress?.(0);
+  const ocr = await recognizeImage(file, {
+    language: options.language,
+    onProgress: options.onProgress,
+  });
+  return {
+    ocr,
+    fileId: null,
+    engine: "tesseract_js",
+    fallbackReason: "PaddleOCR 后端不可用，已回退浏览器引擎",
+  };
 }

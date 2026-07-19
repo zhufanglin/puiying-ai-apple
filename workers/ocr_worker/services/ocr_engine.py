@@ -211,15 +211,78 @@ class BaiduOcrBackend:
             raise RuntimeError("百度 OCR 返回的不是合法 JSON") from exc
 
 
-class OcrEngine:
-    """根据任务类型选择百度 OCR 接口。"""
+class PaddleOcrBackend:
+    """PaddleOCR 本地引擎，无需联网，作为百度 OCR 回退。"""
 
-    def __init__(self, backend_factory=BaiduOcrBackend) -> None:
-        self.backend_factory = backend_factory
+    name = "paddleocr"
+
+    def __init__(self) -> None:
+        from paddleocr import PaddleOCR
+
+        lang = os.getenv("PADDLE_OCR_LANG", "ch")
+        try:
+            # PaddleOCR 3.x：use_textline_orientation 替代 use_angle_cls，移除 show_log
+            self.client = PaddleOCR(
+                use_textline_orientation=True, lang=lang, enable_mkldnn=False
+            )
+        except TypeError:
+            try:
+                # PaddleOCR 2.x 兼容回退
+                self.client = PaddleOCR(
+                    use_angle_cls=True, lang=lang, show_log=False, enable_mkldnn=False
+                )
+            except TypeError:
+                self.client = PaddleOCR(use_angle_cls=True, lang=lang, show_log=False)
+
+    def extract(self, path: Path) -> OcrResult:
+        try:
+            result = self.client.ocr(str(path), cls=True)
+        except TypeError:
+            # PaddleOCR 3.x：predict() 不接受 cls
+            result = self.client.ocr(str(path))
+
+        # PaddleOCR 3.x：dict-like OCRResult（rec_texts / rec_scores）
+        if result and hasattr(result[0], "keys") and "rec_texts" in result[0]:
+            texts = [str(t) for t in result[0].get("rec_texts", [])]
+            scores = [float(s) for s in result[0].get("rec_scores", [])]
+            if not texts:
+                return OcrResult("", 0.0, self.name, warnings=["PaddleOCR 未识别到文字。"])
+            return OcrResult(
+                "\n".join(texts),
+                sum(scores) / len(scores) if scores else 0.5,
+                self.name,
+            )
+
+        # PaddleOCR 2.x：经典 list[list[tuple]] 格式
+        texts: list[str] = []
+        confidences: list[float] = []
+        for page in result or []:
+            for line in page or []:
+                if len(line) >= 2 and isinstance(line[1], (tuple, list)):
+                    texts.append(str(line[1][0]))
+                    confidences.append(float(line[1][1]))
+        if not texts:
+            return OcrResult("", 0.0, self.name, warnings=["PaddleOCR 未识别到文字。"])
+        return OcrResult(
+            "\n".join(texts),
+            sum(confidences) / len(confidences),
+            self.name,
+        )
+
+
+class OcrEngine:
+    """OCR 引擎调度：直接使用 PaddleOCR 本地引擎（无需 API key）。"""
+
+    def __init__(self) -> None:
+        pass
 
     def extract(self, path: str | Path, *, job_type: str = "document") -> OcrResult:
-        if job_type == "receipt":
-            mode = os.getenv("BAIDU_OCR_RECEIPT_MODE", "handwriting")
-        else:
-            mode = os.getenv("BAIDU_OCR_DOCUMENT_MODE", "general_basic")
-        return self.backend_factory(mode=mode).extract(path)
+        resolved = Path(path).resolve()
+        if not resolved.is_file():
+            raise FileNotFoundError(resolved)
+
+        # 直接使用 PaddleOCR 本地引擎
+        try:
+            return PaddleOcrBackend().extract(resolved)
+        except Exception as e:
+            raise RuntimeError(f"PaddleOCR 识别失败：{e}")

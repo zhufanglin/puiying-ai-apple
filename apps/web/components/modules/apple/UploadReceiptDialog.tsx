@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { X, Sparkles, AlertTriangle } from "lucide-react";
 import UploadDropzone from "@/components/ui/UploadDropzone";
+import { recognizeImage } from "@/lib/ocr-engine";
 import {
   recognizeWithServerFallback,
   type ServerStructuredResult,
@@ -124,11 +125,13 @@ export default function UploadReceiptDialog({ open, onClose, onConfirm }: Props)
     setUploading(true);
     setError(null);
     setProgress(0);
-    setStatusText("百度 OCR 識別中...");
+    setStatusText("PaddleOCR 識別中...");
 
     try {
       // 1. OCR 識別
-      const ocrResult = await recognizeImage(file, {
+      const recognized = await recognizeWithServerFallback(file, {
+        module: "finance",
+        jobType: "receipt",
         language: "chi_sim+eng",
         onProgress: (pct) => setProgress(Math.round(pct * 100)),
       });
@@ -157,18 +160,18 @@ export default function UploadReceiptDialog({ open, onClose, onConfirm }: Props)
               ...fallback.warnings,
             ],
           };
-          setAnalysisSource(recognized.structured ? "OCR Worker 保守規則" : "瀏覽器保守規則");
+          setAnalysisSource(recognized.structured ? "PaddleOCR + 保守規則" : "PaddleOCR 本地規則");
         }
       } else {
         parsed = mergeConservativeResults(
           fromWorkerStructured(recognized.structured, recognized.ocr.text),
           parseReceipt(recognized.ocr),
         );
-        setAnalysisSource(recognized.structured ? "OCR Worker 保守規則" : "瀏覽器保守規則");
+        setAnalysisSource(recognized.structured ? "PaddleOCR + 保守規則" : "PaddleOCR 本地規則");
       }
       const warnings = [...parsed.warnings];
       if (recognized.fallbackReason) {
-        warnings.unshift(`百度 OCR 不可用，已改用瀏覽器識別：${recognized.fallbackReason}`);
+        warnings.unshift(`後端 OCR 不可用，已改用瀏覽器識別：${recognized.fallbackReason}`);
       }
 
       // 3. 轉為組件使用的格式
