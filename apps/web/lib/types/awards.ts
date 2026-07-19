@@ -1,0 +1,254 @@
+/* ============================================================
+ * 獎狀 & 獎學金 — TypeScript 類型定義
+ *
+ * 與後端 API 響應結構一一對應。
+ * 後端 Pydantic Schema 變更時，此文件需同步更新。
+ * ============================================================ */
+
+// ==================== 通用 ====================
+
+export interface ApiResponse<T = unknown> {
+  code: number;
+  message: string;
+  data: T;
+}
+
+export interface PaginatedData<T> {
+  items: T[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+// ==================== 獎狀模板 ====================
+
+export interface AwardTemplate {
+  id: number;
+  name: string;
+  description?: string;
+  category: string;        // 學業 / 品德 / 活動 / 其他
+  default_content?: string;
+  badge_style?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AwardTemplateQuery {
+  name?: string;
+  category?: string;
+  is_active?: boolean;
+  page?: number;
+  page_size?: number;
+}
+
+// ==================== 獎狀 ====================
+
+export interface AwardRecipient {
+  id: number;
+  award_id: number;
+  student_name: string;
+  student_class: string;
+  student_grade?: string;
+  certificate_no?: string;
+  reason?: string;
+  rank?: string;           // 一等獎 / 二等獎 / 三等獎 / 優秀獎
+  scholarship_amount?: number | null;  // 核算後的獎學金金額
+  created_at: string;
+}
+
+export interface Award {
+  id: number;
+  template_id: number;
+  title: string;
+  issue_date: string;
+  issuer?: string;
+  status: string;          // draft / calculated / confirmed / cancelled
+  amount?: number;
+  remark?: string;
+  total_recipients: number;
+  created_at: string;
+  updated_at: string;
+  template?: AwardTemplate;
+  recipients?: AwardRecipient[];
+}
+
+export interface AwardListItem {
+  id: number;
+  title: string;
+  template_name?: string;
+  template_category?: string;
+  issue_date: string;
+  issuer?: string;
+  amount?: number;
+  status: string;
+  total_recipients: number;
+  created_at: string;
+}
+
+export interface AwardQuery {
+  title?: string;
+  template_id?: number;
+  status?: string;
+  date_from?: string;
+  date_to?: string;
+  page?: number;
+  page_size?: number;
+}
+
+export interface AwardCreatePayload {
+  template_id: number;
+  title: string;
+  issue_date?: string;
+  issuer?: string;
+  amount?: number;
+  remark?: string;
+  recipients: AwardRecipientCreatePayload[];
+}
+
+export interface AwardRecipientCreatePayload {
+  student_name: string;
+  student_class: string;
+  student_grade?: string;
+  reason?: string;
+  rank?: string;
+}
+
+export interface AwardUpdatePayload {
+  template_id?: number;
+  title?: string;
+  issue_date?: string;
+  issuer?: string;
+  amount?: number;
+  remark?: string;
+}
+
+// ==================== 獎學金 ====================
+
+export interface ScholarshipApplication {
+  id: number;
+  student_name: string;
+  student_class: string;
+  student_grade?: string;
+  scholarship_type: string;  // 學業優秀 / 品德風尚 / 科技競賽 / 體藝特長 / 助學金
+  academic_year: string;
+  semester: string;          // 上 / 下
+  application_date: string;
+  status: string;            // pending / approved / rejected
+  amount: number;
+  reason?: string;
+  remark?: string;
+  reviewer_id?: number;
+  review_comment?: string;
+  review_date?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ScholarshipQuery {
+  student_name?: string;
+  scholarship_type?: string;
+  status?: string;
+  academic_year?: string;
+  page?: number;
+  page_size?: number;
+}
+
+export interface ScholarshipApplyPayload {
+  student_name: string;
+  student_class: string;
+  student_grade?: string;
+  scholarship_type: string;
+  academic_year: string;
+  semester: string;
+  amount: number;
+  reason?: string;
+  remark?: string;
+}
+
+export interface ScholarshipReviewPayload {
+  status: "approved" | "rejected";
+  review_comment?: string;
+}
+
+// ==================== 統計 ====================
+
+export interface AwardStatistics {
+  total_awards: number;
+  draft_count: number;
+  calculated_count: number;
+  confirmed_count: number;
+  cancelled_count: number;
+  total_recipients: number;
+  template_count: number;
+}
+
+export interface ScholarshipStatistics {
+  total_applications: number;
+  pending_count: number;
+  approved_count: number;
+  rejected_count: number;
+  total_amount: number;
+  approved_amount: number;
+}
+
+export interface AwardsDashboardStats {
+  awards: AwardStatistics;
+  scholarships: ScholarshipStatistics;
+}
+
+
+// ==================== 獎學金核算 ====================
+
+export interface CalculateResultItem {
+  student_name: string;
+  student_class: string;
+  rank?: string;
+  base_amount: number;
+  final_amount: number;
+  remark?: string;
+}
+
+export interface CalculateResult {
+  items: CalculateResultItem[];
+  total_amount: number;
+}
+
+
+// ==================== 讀稿生成 ====================
+
+export interface ScriptItem {
+  student_name: string;
+  student_class: string;
+  student_grade?: string;
+  script_text: string;
+}
+
+export interface ScriptOut {
+  award_title: string;
+  total: number;
+  items: ScriptItem[];
+}
+
+
+// ==================== 批量證書生成（基於現有獎狀） ====================
+
+export interface CertificateRequestPayload {
+  template_id?: number;
+  recipient_ids: number[];
+  signatory?: string;
+}
+
+
+// ==================== 批量生成文件信息 ====================
+
+export interface BatchGenerateFileInfo {
+  student_name: string;
+  file_path: string;
+}
+
+export interface BatchGenerateData {
+  files: BatchGenerateFileInfo[];
+  download_token: string;
+}
