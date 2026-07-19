@@ -13,7 +13,7 @@ export interface InvoiceResult {
   assetName: string;
   category: AssetCategory | "";
   amount: number;
-  currency: "HKD" | "";
+  currency: "HKD" | "CNY" | "";
   purchaseDate: string;
   vendor: string;
   invoiceNo: string;
@@ -40,7 +40,8 @@ const INVOICE_TOTAL_LABEL = /(?:grand\s*total|invoice\s*total|total\s*amount|\bt
 const BALANCE_DUE_LABEL = /(?:amount\s*due|balance\s*due|應付|应付)/i;
 const EXCLUDED_AMOUNT_LABEL = /(?:sub[\s-]*total|tax|vat|discount|shipping|freight|deposit|unit\s*price|total\s*items?|quantity|qty|小計|小计|稅|税|折扣|運費|运费|訂金|订金|單價|单价|數量|数量)/i;
 const EXPLICIT_HKD = /(?:HKD|HK\$|港幣|港币|港元)/i;
-const FOREIGN_CURRENCY = /(?:USD|US\$|EUR|GBP|CNY|RMB|JPY|AUD|CAD|MOP|人民幣|人民币|美元|歐元|欧元|英鎊|英镑|日圓|日元)/i;
+const EXPLICIT_CNY = /(?:CNY|RMB|¥|￥|人民币|人民幣|\b元\b)/i;
+const FOREIGN_CURRENCY = /(?:USD|US\$|EUR|GBP|JPY|AUD|CAD|MOP|美元|歐元|欧元|英鎊|英镑|日圓|日元)/i;
 const PAYMENT_OR_CREDIT_CONTEXT = /(?:\bpaid\b|payment|deposit|credit|refund|已付|付款|訂金|订金|退款|貸項|贷项)/i;
 const CREDIT_DOCUMENT_CONTEXT = /(?:\bcredit\s*(?:note|memo|advice|invoice)\b|^\s*credit(?:\s*(?:no\.?|#)\s*\S+)?\s*$|貸項通知|贷项通知|紅字發票|红字发票|退款單|退款单)/i;
 
@@ -137,28 +138,34 @@ function extractPurchaseDate(lines: string[]): { value: string; ambiguous: boole
   };
 }
 
-function parseHKDAmount(line: string): number | null {
+function parseCurrencyAmount(line: string, currencyPattern: RegExp): number | null {
   if (
-    /[-−–—]\s*(?:(?:HKD|HK\$|港幣|港币|港元)\s*)?\d/i.test(line)
-    || /(?:HKD|HK\$|港幣|港币|港元)\s*[-−–—]\s*\d/i.test(line)
-    || /[（(]\s*(?:(?:HKD|HK\$|港幣|港币|港元)\s*)?\d[\d,.]*\s*(?:(?:HKD|HK\$|港幣|港币|港元)\s*)?[)）]/i.test(line)
+    /[-−–—]\s*(?:\d)/i.test(line)
+    || /[（(]\s*\d[\d,.]*\s*[)）]/i.test(line)
     || /\d[\d,.]*\s*[-−–—](?:\s|$)/.test(line)
-    || /(?:\b(?:CR|CREDIT)\s*(?:(?:HKD|HK\$|港幣|港币|港元)\s*)?\d|\d[\d,.]*\s*(?:CR|CREDIT)\b|\bcredit\s*note\b)/i.test(line)
+    || /(?:\b(?:CR|CREDIT)\s*\d|\d[\d,.]*\s*(?:CR|CREDIT)\b|\bcredit\s*note\b)/i.test(line)
   ) {
     return null;
   }
   const numberPattern = "((?:\\d{1,3}(?:,\\d{3})+|\\d+)(?:\\.\\d{1,2})?)";
-  const before = new RegExp(`(?:HKD|HK\\$|港幣|港币|港元)\\s*[：:]?\\s*${numberPattern}(?![\\d,.])`, "i");
-  const after = new RegExp(`(?:^|[^\\d,.])${numberPattern}(?![\\d,.])\\s*(?:HKD|HK\\$|港幣|港币|港元)`, "i");
-  const match = line.match(before) ?? line.match(after);
+  const before = new RegExp(`${currencyPattern.source}\\s*[：:]?\\s*${numberPattern}(?![\\d,.])`, "i");
+  const after = new RegExp(`(?:^|[^\\d,.])${numberPattern}(?![\\d,.])\\s*${currencyPattern.source}`, "i");
+  // 人民币额外：¥100 / 100元
+  const yuanBefore = /[¥￥]\s*((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{1,2})?)(?![\d,.])/i;
+  const yuanAfter = /((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{1,2})?)\s*元/i;
+  const match = line.match(before) ?? line.match(after) ?? line.match(yuanBefore) ?? line.match(yuanAfter);
   if (!match?.[1]) return null;
   const amount = Number(match[1].replace(/,/g, ""));
   return Number.isFinite(amount) && amount > 0 ? amount : null;
 }
 
+function parseHKDAmount(line: string): number | null {
+  return parseCurrencyAmount(line, EXPLICIT_HKD);
+}
+
 function extractTotalAmount(lines: string[]): {
   amount: number;
-  currency: "HKD" | "";
+  currency: "HKD" | "CNY" | "";
   conflicting: boolean;
   totalWithoutHKD: boolean;
   creditDocument: boolean;
@@ -174,7 +181,7 @@ function extractTotalAmount(lines: string[]): {
     };
   }
 
-  const values: number[] = [];
+  const values: Array<{ amount: number; currency: "HKD" | "CNY" }> = [];
   let totalWithoutHKD = false;
   const invoiceTotalLines = lines.filter((line) =>
     INVOICE_TOTAL_LABEL.test(line) && !EXCLUDED_AMOUNT_LABEL.test(line),
@@ -186,18 +193,25 @@ function extractTotalAmount(lines: string[]): {
       : lines.filter((line) => BALANCE_DUE_LABEL.test(line) && !EXCLUDED_AMOUNT_LABEL.test(line)));
 
   for (const line of candidateLines) {
-    if (!EXPLICIT_HKD.test(line) || FOREIGN_CURRENCY.test(line)) {
-      totalWithoutHKD = true;
-      continue;
+    if (FOREIGN_CURRENCY.test(line)) {
+      continue; // 真正的外币跳过
     }
-    const amount = parseHKDAmount(line);
-    if (amount !== null) values.push(amount);
+    const hkd = parseHKDAmount(line);
+    const cny = parseCurrencyAmount(line, EXPLICIT_CNY);
+    if (hkd !== null) {
+      values.push({ amount: hkd, currency: "HKD" });
+    } else if (cny !== null) {
+      values.push({ amount: cny, currency: "CNY" });
+    } else {
+      totalWithoutHKD = true;
+    }
   }
 
-  const distinct = Array.from(new Set(values));
+  const distinct = Array.from(new Set(values.map(v => `${v.currency}:${v.amount}`)));
+  const first = values[0];
   return {
-    amount: distinct.length === 1 ? distinct[0]! : 0,
-    currency: distinct.length === 1 ? "HKD" : "",
+    amount: distinct.length === 1 && first ? first.amount : 0,
+    currency: distinct.length === 1 && first ? first.currency : "",
     conflicting: distinct.length > 1,
     totalWithoutHKD,
     creditDocument: false,
@@ -275,11 +289,11 @@ export function parseInvoice(ocrResult: OcrResult): InvoiceResult {
   if (!assetName) warnings.push("未能可靠識別單一資產名稱，請對照原圖填寫");
   if (assetName && !category) warnings.push("未能可靠判斷資產類別，請手動選擇");
   if (amountResult.creditDocument) warnings.push("檢測到貸項通知／退款單，未自動填寫正數購買金額");
-  else if (amountResult.conflicting) warnings.push("發票出現多個不同的 HKD 總額，未自動填寫金額");
+  else if (amountResult.conflicting) warnings.push("發票出現多個不同的金額，未自動填寫金額");
   else if (!amountResult.amount) {
     warnings.push(amountResult.totalWithoutHKD
-      ? "總額未標明 HKD／HK$／港幣，未自動假定貨幣及金額"
-      : "未找到明確標示 HKD 的發票總額，請手動填寫");
+      ? "總額未標明 HKD/CNY/¥ 等貨幣標記，未自動假定貨幣及金額"
+      : "未找到明確標示幣種的發票總額，請手動填寫");
   }
   if (dateResult.ambiguous) warnings.push("發票日期的日/月次序有歧義，未自動填寫");
   else if (dateResult.conflicting) warnings.push("發票出現多個不同的發票日期，未自動填寫");
@@ -288,7 +302,7 @@ export function parseInvoice(ocrResult: OcrResult): InvoiceResult {
   if (!invoiceNo) warnings.push("未能可靠識別發票號碼");
   if (ocrResult.confidence < 50) warnings.push("OCR 識別信心較低，請仔細核對原圖");
 
-  const coreComplete = Boolean(assetName && amount > 0 && currency === "HKD" && purchaseDate);
+  const coreComplete = Boolean(assetName && amount > 0 && (currency === "HKD" || currency === "CNY") && purchaseDate);
   let confidence: InvoiceResult["confidence"] = "low";
   if (!multipleItems && coreComplete && category && vendor && ocrResult.confidence >= 80) {
     confidence = "high";

@@ -204,11 +204,14 @@ export const awardApi = {
     const res = await fetch(url, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
     if (!res.ok) throw new Error("生成證書失敗");
     const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
+    link.href = blobUrl;
     link.download = "certificate.pdf";
+    document.body.appendChild(link);
     link.click();
-    URL.revokeObjectURL(link.href);
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
   },
 
   /** 下載已通過獎學金證書（自動觸發瀏覽器下載） */
@@ -220,11 +223,14 @@ export const awardApi = {
     const res = await fetch(url, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
     if (!res.ok) throw new Error("生成證書失敗");
     const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
+    link.href = blobUrl;
     link.download = "scholarship_certificate.pdf";
+    document.body.appendChild(link);
     link.click();
-    URL.revokeObjectURL(link.href);
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
   },
 
   // ==================== 批量導出證書 ====================
@@ -240,11 +246,14 @@ export const awardApi = {
     });
     if (!res.ok) throw new Error("批量導出失敗");
     const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
+    link.href = blobUrl;
     link.download = "certificates.zip";
+    document.body.appendChild(link);
     link.click();
-    URL.revokeObjectURL(link.href);
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
   },
 
   /** 批量導出獎學金證書（ZIP 包，自動觸發下載） */
@@ -262,10 +271,13 @@ export const awardApi = {
       throw new Error((json as any).message || "批量導出失敗");
     }
     const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
+    link.href = blobUrl;
     link.download = "scholarships.zip";
+    document.body.appendChild(link);
     link.click();
-    URL.revokeObjectURL(link.href);
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
   },
 };

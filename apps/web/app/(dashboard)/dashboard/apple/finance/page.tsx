@@ -9,6 +9,8 @@ import DataTable, { type Column } from "@/components/ui/DataTable";
 import TaskStatusBadge from "@/components/ui/TaskStatusBadge";
 import FilterBar from "@/components/ui/FilterBar";
 import UploadReceiptDialog from "@/components/modules/apple/UploadReceiptDialog";
+import ExpenseCreateDialog from "@/components/modules/apple/ExpenseCreateDialog";
+import QuotationCreateDialog from "@/components/modules/apple/QuotationCreateDialog";
 import { api } from "@/lib/api";
 
 /* ================================================================
@@ -99,6 +101,8 @@ const Pill = ({ label, tone }: { label: string; tone: "good"|"warning"|"danger"|
 export default function FinancePage() {
   const [activeTab, setActiveTab] = useState<TabKey>("income");
   const [receiptOpen, setReceiptOpen] = useState(false);
+  const [expenseOpen, setExpenseOpen] = useState(false);
+  const [quotationOpen, setQuotationOpen] = useState(false);
   const [incomeData, setIncomeData] = useState<IncomeRecord[]>(MOCK_INCOME);
   const [expenseData] = useState<ExpenseRecord[]>(MOCK_EXPENSE);
   const [quotationData] = useState<QuotationRecord[]>(MOCK_QUOTATION);
@@ -189,7 +193,7 @@ export default function FinancePage() {
         actions={
           <button style={{background:B, borderColor:B}}
             className="flex items-center gap-1.5 px-4 py-[8px] text-sm text-white rounded-lg font-bold hover:opacity-90"
-            onClick={() => activeTab==="income" && setReceiptOpen(true)}>
+            onClick={() => activeTab==="income" ? setReceiptOpen(true) : activeTab==="expense" ? setExpenseOpen(true) : setQuotationOpen(true)}>
             <Plus size={16}/> {activeTab==="income"?"新增收入":activeTab==="expense"?"新增支出":"新增報價單"}
           </button>
         }
@@ -311,6 +315,8 @@ export default function FinancePage() {
       )}
 
       <UploadReceiptDialog open={receiptOpen} onClose={()=>setReceiptOpen(false)} onConfirm={handleReceipt} />
+      <ExpenseCreateDialog open={expenseOpen} onClose={()=>setExpenseOpen(false)} onSuccess={()=>{}} />
+      <QuotationCreateDialog open={quotationOpen} onClose={()=>setQuotationOpen(false)} onSuccess={()=>{}} />
     </div>
   );
 }
