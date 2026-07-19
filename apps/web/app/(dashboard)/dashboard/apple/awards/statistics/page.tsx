@@ -55,7 +55,7 @@ export default function StatisticsPage() {
           label="已核算"
           value={a?.calculated_count || 0}
           icon={Calculator}
-          color="text-blue-600"
+          color="text-[#23675f]"
         />
         <StatsCard
           label="草稿"
@@ -73,7 +73,7 @@ export default function StatisticsPage() {
           label="獲獎總人次"
           value={a?.total_recipients || 0}
           icon={Users}
-          color="text-blue-600"
+          color="text-[#23675f]"
         />
       </div>
 
@@ -111,7 +111,7 @@ export default function StatisticsPage() {
           label="通過總額 (HKD)"
           value={s ? `HK$ ${Number(s.approved_amount).toLocaleString()}` : 0}
           icon={DollarSign}
-          color="text-blue-600"
+          color="text-[#23675f]"
         />
       </div>
     </div>

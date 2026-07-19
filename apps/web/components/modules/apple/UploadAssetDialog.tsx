@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { X, Sparkles, AlertTriangle } from "lucide-react";
+import { X, Sparkles, AlertTriangle, CheckCircle } from "lucide-react";
 import UploadDropzone from "@/components/ui/UploadDropzone";
 import { recognizeWithServerFallback } from "@/lib/ocr-api";
 import {
@@ -44,10 +44,12 @@ export default function UploadAssetDialog({ open, onClose, onConfirm }: Props) {
   const [step, setStep] = useState<"upload"|"review">("upload");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [success, setSuccess] = useState(false);
   const [progress, setProgress] = useState(0);
   const [ocr, setOcr] = useState<InvoiceResult|null>(null);
   const [fileId, setFileId] = useState<number|null>(null);
   const [error, setError] = useState<string|null>(null);
+  const [fileId, setFileId] = useState<number|null>(null);
   const [statusText, setStatusText] = useState("OCR 識別中...");
   const [analysisSource, setAnalysisSource] = useState("");
   const [aiConfig, setAiConfig] = useState<InvoiceAIConfig>({
@@ -194,7 +196,8 @@ export default function UploadAssetDialog({ open, onClose, onConfirm }: Props) {
         purchaseAmount: parseFloat(form.purchaseAmount) || 0,
         fileId: fileId ?? undefined,
       });
-      close();
+      setSuccess(true);
+      setTimeout(() => close(), 1500);
     } catch (err) {
       const message = err instanceof Error ? err.message : "資產未能寫入後端";
       setError(message);
@@ -517,6 +520,22 @@ export default function UploadAssetDialog({ open, onClose, onConfirm }: Props) {
       }}
       onClick={() => { if (!saving) close(); }}
     >
+      {/* 成功提示 — 在弹窗上方，不受內部 step 影響 */}
+      {success && (
+        <div style={{
+          position: "fixed", top: 24, left: "50%", transform: "translateX(-50%)",
+          zIndex: 60, display: "flex", alignItems: "center", gap: 10,
+          padding: "14px 22px", borderRadius: 10,
+          background: "#f0fdf4", border: "1px solid #a6e0c0",
+          boxShadow: "0 10px 30px rgba(16,24,40,0.15)",
+        }}>
+          <CheckCircle size={22} color="#027a48" />
+          <div>
+            <p style={{color:"#027a48", fontWeight:800, fontSize:15, margin:0}}>登記入庫成功</p>
+            <p style={{color:"#667085", fontSize:12, margin:"2px 0 0"}}>資產已保存至系統</p>
+          </div>
+        </div>
+      )}
       <div className="w-full max-w-[480px]" onClick={(e) => e.stopPropagation()}>
         {panel}
       </div>

@@ -16,7 +16,7 @@ import type { Award, AwardRecipient, CalculateResult } from "@/lib/types/awards"
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
     draft: { label: "草稿", cls: "bg-gray-100 text-gray-600" },
-    calculated: { label: "已核算", cls: "bg-blue-100 text-blue-700" },
+    calculated: { label: "已核算", cls: "bg-[#ecfdf3] text-[#23675f]" },
     confirmed: { label: "已確認", cls: "bg-green-100 text-green-700" },
     cancelled: { label: "已取消", cls: "bg-red-100 text-red-600" },
   };
@@ -260,13 +260,13 @@ export default function AwardDetailPage() {
                 <div
                   key={s.n}
                   className={`flex-1 flex items-center gap-1.5 px-2 py-2 rounded-lg text-xs font-medium transition-colors ${
-                    isActive ? "bg-blue-50 text-blue-600" :
+                    isActive ? "bg-[#ecfdf3] text-[#23675f]" :
                     isDone ? "bg-green-50 text-green-600" :
                     "text-gray-400"
                   }`}
                 >
                   <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 ${
-                    isActive ? "bg-blue-600 text-white" :
+                    isActive ? "bg-[#23675f] text-white" :
                     isDone ? "bg-green-600 text-white" :
                     "bg-gray-100 text-gray-400"
                   }`}>{s.n}</span>
@@ -312,7 +312,7 @@ export default function AwardDetailPage() {
           {currentStep === 2 && calcResult && (
             <>
               {/* 規則摘要 */}
-              <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-blue-50 rounded-lg text-xs text-blue-800">
+              <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-[#ecfdf3] rounded-lg text-xs text-[#23675f]">
                 <AlertCircle size={14} className="flex-shrink-0" />
                 <span>
                   核算規則：

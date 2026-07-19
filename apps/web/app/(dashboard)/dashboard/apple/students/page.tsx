@@ -20,7 +20,7 @@ interface StudentRecord {
 
 const STATUS_MAP: Record<string, { label: string; className: string }> = {
   active: { label: "在讀", className: "bg-green-50 text-green-700" },
-  graduated: { label: "已畢業", className: "bg-blue-50 text-blue-700" },
+  graduated: { label: "已畢業", className: "bg-[#ecfdf3] text-[#23675f]" },
   transferred: { label: "已轉學", className: "bg-orange-50 text-orange-700" },
   suspended: { label: "休學", className: "bg-gray-50 text-gray-700" },
 };

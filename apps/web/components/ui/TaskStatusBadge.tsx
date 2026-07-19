@@ -4,7 +4,7 @@ interface TaskStatusBadgeProps {
 
 const statusMap: Record<string, { label: string; className: string }> = {
   pending: { label: "待處理", className: "bg-yellow-50 text-yellow-700 border-yellow-200" },
-  processing: { label: "處理中", className: "bg-blue-50 text-blue-700 border-blue-200" },
+  processing: { label: "處理中", className: "bg-[#ecfdf3] text-[#23675f] border-[#a6e0c0]" },
   completed: { label: "已完成", className: "bg-green-50 text-green-700 border-green-200" },
   failed: { label: "失敗", className: "bg-red-50 text-red-700 border-red-200" },
   approved: { label: "已通過", className: "bg-green-50 text-green-700 border-green-200" },
