@@ -169,7 +169,18 @@ export default function ReviewScholarshipsPage() {
           setReviewComment("");
         }}
         loading={reviewing}
-      />
+      >
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">審核意見（可選）</label>
+          <textarea
+            value={reviewComment}
+            onChange={(e) => setReviewComment(e.target.value)}
+            placeholder="輸入審核意見..."
+            rows={3}
+            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+          />
+        </div>
+      </ConfirmDialog>
     </div>
   );
 }
