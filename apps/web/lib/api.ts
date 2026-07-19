@@ -1,5 +1,5 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-const BASE = `${API_URL}/api/v1`;
+
+const BASE = `/api/v1`;
 
 interface ApiResponse<T = unknown> {
   code: number;

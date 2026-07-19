@@ -84,8 +84,7 @@ export interface ExcelImportResult {
 type ApiResult<T> = { success: true; data: T } | { success: false; data: null; error: string };
 type Envelope<T> = { code?: number; message?: string; data: T };
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-const STUDENTS_ROOT = `${API_URL}/api/v1/apple/students`;
+const STUDENTS_ROOT = `/api/v1/apple/students`;
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<ApiResult<T>> {
   try {
@@ -139,7 +138,7 @@ export function studentCertificatePdfUrl(studentId: string, certificateId: strin
 }
 
 export function studentMediaUrl(path: string): string {
-  return /^https?:\/\//i.test(path) ? path : `${API_URL}${path.startsWith("/") ? path : `/${path}`}`;
+  return /^https?:\/\//i.test(path) ? path : `/api/v1/apple/students${path.startsWith("/") ? path : `/${path}`}`;
 }
 
 export function studentScoresExportUrl(studentId: string, filters: { schoolYear?: string; term?: string; subject?: string }): string {

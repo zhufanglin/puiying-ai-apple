@@ -113,7 +113,7 @@ export default function ReviewScholarshipsPage() {
 
   return (
     <div>
-      <PageHeader
+      <PageHeader backHref=/dashboard/apple/awards/scholarships
         title="審核工作台"
         subtitle="審批學生獎學金申請"
       />

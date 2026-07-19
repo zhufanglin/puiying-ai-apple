@@ -152,7 +152,7 @@ export default function ScholarshipsListPage() {
 
   return (
     <div>
-      <PageHeader
+      <PageHeader backHref="/dashboard/apple/awards"
         title="獎學金申請"
         subtitle="查看和管理學生獎學金申請"
         actions={

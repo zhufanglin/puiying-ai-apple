@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -33,8 +33,7 @@ export default function StudentsPage() {
   const fetchStudents = async () => {
     try {
       const token = localStorage.getItem("token");
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-      const res = await fetch(`${apiBase}/api/v1/apple/students`, {
+      const res = await fetch(`/api/v1/apple/students`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const json = await res.json();

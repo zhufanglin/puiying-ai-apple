@@ -54,7 +54,7 @@ class AssetResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    @field_validator("created_at", "updated_at", mode="before")
+    @field_validator("created_at", "updated_at", "written_off_at", mode="before")
     @classmethod
     def _validate_dt(cls, v):
         if v is None:

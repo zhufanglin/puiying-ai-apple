@@ -61,12 +61,12 @@ export default function ApplyScholarshipPage() {
 
   return (
     <div>
-      <PageHeader
+      <PageHeader backHref="/dashboard/apple/awards/scholarships"
         title="提交獎學金申請"
         subtitle="填寫學生資訊和申請理由"
         actions={
           <button
-            onClick={() => router.back()}
+            onClick={() => window.history.back()}
             className="flex items-center gap-1.5 px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50"
           >
             <ArrowLeft size={16} /> 返回

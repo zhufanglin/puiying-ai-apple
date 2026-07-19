@@ -28,7 +28,7 @@ export default function StatisticsPage() {
 
   return (
     <div>
-      <PageHeader
+      <PageHeader backHref="/dashboard/apple/awards"
         title="數據統計"
         subtitle="獎狀 & 獎學金數據概覽"
       />
