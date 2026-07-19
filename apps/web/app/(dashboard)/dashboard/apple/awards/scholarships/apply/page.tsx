@@ -51,7 +51,7 @@ export default function ApplyScholarshipPage() {
         reason: form.reason.trim() || undefined,
         remark: form.remark.trim() || undefined,
       });
-      router.push(`/dashboard/apple/awards/scholarships`);
+      router.push(`/dashboard/apple/awards?tab=scholarships`);
     } catch (e: any) {
       setError(e.message || "提交失敗");
     } finally {
