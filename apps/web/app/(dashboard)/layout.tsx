@@ -68,20 +68,20 @@ export default function DashboardLayout({
     <div className="flex h-screen overflow-hidden">
       {/* ---- 側邊欄 ---- */}
       <aside
-        className={`flex flex-col bg-white border-r border-gray-200 transition-all duration-200 ${
-          collapsed ? "w-16" : "w-60"
-        }`}
+        className="flex flex-col transition-all duration-200"
+        style={{ background: "#102a2f", width: collapsed ? 64 : 240 }}
       >
         {/* Logo */}
-        <div className="flex items-center h-14 px-4 border-b border-gray-100">
+        <div className="flex items-center h-14 px-4 border-b" style={{ borderColor: "rgba(255,255,255,0.12)" }}>
           {!collapsed && (
-            <span className="text-sm font-bold text-primary-700 truncate">
+            <span className="text-sm font-bold truncate" style={{ color: "#eef7f5" }}>
               培英 AI 數智平台
             </span>
           )}
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="ml-auto p-1 rounded hover:bg-gray-100 text-gray-400"
+            className="ml-auto p-1 rounded hover:opacity-80"
+            style={{ color: "rgba(255,255,255,0.6)" }}
           >
             {collapsed ? <Menu size={18} /> : <ChevronLeft size={18} />}
           </button>
@@ -95,11 +95,12 @@ export default function DashboardLayout({
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 mx-2 mb-1 px-3 py-2 rounded-lg text-sm transition-colors ${
-                  isActive
-                    ? "bg-primary-50 text-primary-700 font-medium"
-                    : "text-gray-600 hover:bg-gray-50"
-                }`}
+                className={`flex items-center gap-3 mx-2 mb-1 px-3 py-2 rounded-lg text-sm transition-colors`}
+                style={{
+                  color: isActive ? "#ffffff" : "#dcecea",
+                  background: isActive ? "rgba(255,255,255,0.12)" : "transparent",
+                  fontWeight: isActive ? 600 : 400,
+                }}
               >
                 <item.icon size={20} />
                 {!collapsed && <span>{item.label}</span>}
@@ -109,8 +110,9 @@ export default function DashboardLayout({
         </nav>
 
         {/* 底部 */}
-        <div className="border-t border-gray-100 p-2">
-          <button onClick={handleLogout} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 rounded-lg">
+        <div className="p-2" style={{ borderTop: "1px solid rgba(255,255,255,0.12)" }}>
+          <button onClick={handleLogout} className="flex items-center gap-2 w-full px-3 py-2 text-sm rounded-lg transition-colors"
+            style={{ color: "rgba(255,255,255,0.6)", background: "transparent" }}>
             <LogOut size={18} />
             {!collapsed && <span>退出</span>}
           </button>
