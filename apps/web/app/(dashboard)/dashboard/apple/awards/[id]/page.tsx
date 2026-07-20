@@ -388,11 +388,11 @@ export default function AwardDetailPage() {
               )}
 
               <Link
-                href="/dashboard/apple/awards/batch"
+                href="/dashboard/apple/awards"
                 className="inline-flex items-center gap-1.5 px-5 py-2.5 text-sm text-white bg-primary-500 rounded-lg hover:bg-primary-600"
               >
                 <FileText size={15} />
-                前往批量生成證書
+                返回獎狀列表
                 <ChevronRight size={15} />
               </Link>
 
