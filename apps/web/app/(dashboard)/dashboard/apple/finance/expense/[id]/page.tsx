@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, FileText, User, Calendar, DollarSign, Building2 } from "lucide-react";
+import { api } from "@/lib/api";
 
 const B = "#23675f"; const BG = "#f6f7f9"; const BD = "#d8dee6"; const MU = "#667085";
 
@@ -30,8 +32,43 @@ export default function ExpenseDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = parseInt(params.id as string);
-  const record = MOCK_EXPENSE.find(r => r.id === id);
+  const [record, setRecord] = useState<typeof MOCK_EXPENSE[0] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ project: "", amount: "", supplier: "", invoiceNo: "" });
 
+  const confirmRecord = async () => {
+    if (!record) return;
+    try { await api.put(`/apple/finance/expense/${record.id}`, { status: "approved" }); } catch {}
+    setRecord({ ...record, status: "approved" });
+  };
+  const startEdit = () => {
+    if (!record) return;
+    setEditForm({ project: record.project, amount: String(record.amount), supplier: record.supplier, invoiceNo: record.invoiceNo });
+    setEditing(true);
+  };
+  const cancelEdit = () => setEditing(false);
+  const saveEdit = async () => {
+    if (!record) return;
+    try { await api.put(`/apple/finance/expense/${record.id}`, { project: editForm.project, amount: parseFloat(editForm.amount), supplier: editForm.supplier, invoice_no: editForm.invoiceNo }); } catch {}
+    setRecord({ ...record, project: editForm.project, amount: parseFloat(editForm.amount), supplier: editForm.supplier, invoiceNo: editForm.invoiceNo });
+    setEditing(false);
+  };
+
+  useEffect(() => {
+    let c = false;
+    api.get<any>(`/apple/finance/expense/${id}`)
+      .then(res => {
+        if (c) return;
+        const d = res.data ?? res;
+        setRecord(d ? { id:d.id??id, invoiceNo:d.invoice_no??"-", supplier:d.supplier??d.project??"-", project:d.project??d.name??"-", amount:d.amount??0, approver:d.approver??d.handler??"-", status:d.status??"pending" } : null);
+      })
+      .catch(() => { if (!c) setRecord(MOCK_EXPENSE.find(r => r.id === id) ?? null); })
+      .finally(() => { if (!c) setLoading(false); });
+    return () => { c = true; };
+  }, [id]);
+
+  if (loading) return <div style={{background:BG}} className="min-h-screen" />;
   if (!record) {
     return (
       <div style={{background:BG}} className="min-h-screen flex items-center justify-center">
@@ -67,27 +104,50 @@ export default function ExpenseDetailPage() {
           <h3 className="text-[16px] font-bold text-[#1d2939] mb-4">基本信息</h3>
           <div className="space-y-3">
             {[
-              { icon:FileText, label:"發票號", value:record.invoiceNo },
-              { icon:DollarSign, label:"金額", value:`HK$ ${record.amount.toLocaleString()}` },
-              { icon:Building2, label:"供應商", value:record.supplier },
-              { icon:User, label:"審批人", value:record.approver },
+              { icon:FileText, label:"發票號", value:record.invoiceNo, key:"invoiceNo" },
+              { icon:DollarSign, label:"金額", value:`HK$ ${record.amount.toLocaleString()}`, key:"amount" },
+              { icon:Building2, label:"供應商", value:record.supplier, key:"supplier" },
+              { icon:User, label:"審批人", value:record.approver, key:"approver" },
             ].map((item,i)=>(
               <div key={i} className="flex items-center gap-3 py-2 border-b border-[#d8dee6] last:border-0">
                 <item.icon size={16} className="text-[#667085] shrink-0"/>
                 <span className="text-sm text-[#667085] w-20">{item.label}</span>
-                <span className="text-sm font-bold text-[#1d2939]">{item.value}</span>
+                {editing && (item.key==="invoiceNo"||item.key==="amount"||item.key==="supplier") ? (
+                  <input value={item.key==="invoiceNo"?editForm.invoiceNo:item.key==="amount"?editForm.amount:editForm.supplier}
+                    onChange={e=>setEditForm(p=>({...p,[item.key]:e.target.value}))}
+                    className="text-sm font-bold border border-[#d8dee6] rounded px-2 py-1 flex-1"/>
+                ) : (
+                  <span className="text-sm font-bold text-[#1d2939]">{item.value}</span>
+                )}
               </div>
             ))}
           </div>
+          {editing && (
+            <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-[#d8dee6]">
+              <button onClick={cancelEdit} className="px-4 py-1.5 text-sm border border-[#d8dee6] rounded font-bold">取消</button>
+              <button onClick={saveEdit} className="px-4 py-1.5 text-sm text-white rounded font-bold" style={{background:B}}>保存</button>
+            </div>
+          )}
         </div>
 
         <div className="bg-white rounded-lg border border-[#d8dee6] p-5" style={{boxShadow:"0 10px 30px rgba(16,24,40,0.08)"}}>
-          <h3 className="text-[16px] font-bold text-[#1d2939] mb-4">相關發票</h3>
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <FileText size={40} className="text-[#d8dee6] mb-3"/>
-            <p className="text-sm text-[#667085]">暫無上傳發票</p>
-            <button className="mt-3 px-4 py-2 text-sm text-white rounded-lg font-bold" style={{background:B}}>上傳發票</button>
-          </div>
+          <h3 className="text-[16px] font-bold text-[#1d2939] mb-4">確認審批</h3>
+          {record.status === "pending" ? (
+            <div className="flex flex-col items-center justify-center py-6 text-center">
+              <p className="text-sm text-[#667085] mb-4">該筆支出尚未審批</p>
+              <div className="flex gap-2">
+                <button onClick={startEdit} className="px-4 py-2 text-sm border border-[#d8dee6] rounded-lg font-bold text-[#1d2939] hover:bg-[#f1f5f8]">修改</button>
+                <button onClick={confirmRecord} className="px-6 py-2 text-sm text-white rounded-lg font-bold" style={{background:B}}>確認審批</button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-6 text-center">
+              <FileText size={40} className={record.status==="approved"?"text-[#027a48]":"text-[#b42318]"} style={{marginBottom:12}}/>
+              <p className="text-sm font-bold" style={{color:record.status==="approved"?"#027a48":"#b42318"}}>
+                {record.status==="approved"?"已通過":"已拒絕"}
+              </p>
+            </div>
+          )}
         </div>
       </div>
 

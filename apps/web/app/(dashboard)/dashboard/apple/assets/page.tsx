@@ -141,7 +141,6 @@ export default function AssetsPage() {
       name: d.name,
       category: d.category,
       location: d.location,
-      asset_no: d.assetNo || undefined,
       purchase_date: d.purchaseDate || undefined,
       purchase_amount: d.purchaseAmount || undefined,
       remark: d.remark || undefined,
@@ -174,7 +173,6 @@ export default function AssetsPage() {
       name: form.name,
       category: form.category,
       location: form.location,
-      asset_no: form.assetNo || undefined,
       purchase_date: form.purchaseDate || undefined,
       purchase_amount: parseFloat(form.purchaseAmount) || undefined,
       remark: form.remark || undefined,
@@ -195,7 +193,8 @@ export default function AssetsPage() {
       setForm({ assetNo:"", name:"", category:"", location:"", purchaseDate:"", purchaseAmount:"", remark:"" });
     } catch (e) {
       // 后端不可用时回退到本地 mock
-      alert("後端寫入失敗，已暫存於頁面列表（刷新後將丟失）");
+      const msg = e instanceof Error ? e.message : JSON.stringify(e);
+      alert("後端寫入失敗: " + msg + "\n已暫存於頁面列表（刷新後將丟失）");
       const n: AssetRecord = {
         id: assets.length+1,
         assetNo: form.assetNo || `AS-${new Date().getFullYear()}-${String(assets.length+1).padStart(3,"0")}`,
@@ -461,11 +460,6 @@ export default function AssetsPage() {
           <FormSection title="手動登記資產" subtitle="填寫以下信息登記新資產">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-[13px] font-bold text-[#344054] mb-1">資產編號</label>
-                <input type="text" value={form.assetNo} onChange={e=>setForm(p=>({...p,assetNo:e.target.value}))} placeholder="自動生成或手動輸入"
-                  className="w-full text-sm border border-[#d8dee6] rounded-lg px-[9px] py-[8px] focus:outline-none focus:border-[#23675f]"/>
-              </div>
-              <div>
                 <label className="block text-[13px] font-bold text-[#344054] mb-1">資產名稱 <span className="text-[#b42318]">*</span></label>
                 <input type="text" value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))} placeholder="如：Dell 桌上電腦"
                   className="w-full text-sm border border-[#d8dee6] rounded-lg px-[9px] py-[8px] focus:outline-none focus:border-[#23675f]"/>
@@ -488,7 +482,10 @@ export default function AssetsPage() {
               </div>
               <div>
                 <label className="block text-[13px] font-bold text-[#344054] mb-1">購買日期</label>
-                <input type="date" value={form.purchaseDate} onChange={e=>setForm(p=>({...p,purchaseDate:e.target.value}))}
+                <input type="text" value={form.purchaseDate} onChange={e=>setForm(p=>({...p,purchaseDate:e.target.value}))}
+                  placeholder="年 / 月 / 日"
+                  onClick={(e)=>{const t=e.currentTarget;t.type="date";setTimeout(()=>t.showPicker?.(),0)}}
+                  onBlur={(e)=>{if(!e.currentTarget.value)e.currentTarget.type="text"}}
                   className="w-full text-sm border border-[#d8dee6] rounded-lg px-[9px] py-[8px] focus:outline-none focus:border-[#23675f]"/>
               </div>
               <div>

@@ -358,16 +358,22 @@ export default function UploadAssetDialog({ open, onClose, onConfirm }: Props) {
               </span>
             </div>
 
-            {/* 警告 */}
+            {/* 警告 — 折叠显示 */}
             {ocr.warnings.length > 0 && (
-              <div className="p-2 rounded border border-[#fedf89] bg-[#fffaeb] text-xs text-[#936a00] space-y-0.5">
-                {ocr.warnings.map((w, i) => (
-                  <div key={i} className="flex items-start gap-1">
-                    <AlertTriangle size={12} className="shrink-0 mt-0.5" />
-                    <span>{w}</span>
-                  </div>
-                ))}
-              </div>
+              <details className="p-2 rounded border border-[#fedf89] bg-[#fffaeb] text-xs text-[#936a00]">
+                <summary className="cursor-pointer font-bold text-[#936a00] flex items-center gap-1">
+                  <AlertTriangle size={12} />
+                  {ocr.warnings.length} 项需人工核对，点击展开
+                </summary>
+                <div className="mt-2 space-y-0.5">
+                  {ocr.warnings.map((w, i) => (
+                    <div key={i} className="flex items-start gap-1">
+                      <span className="text-[#b54708]">·</span>
+                      <span>{w}</span>
+                    </div>
+                  ))}
+                </div>
+              </details>
             )}
 
             {error && (
@@ -430,9 +436,12 @@ export default function UploadAssetDialog({ open, onClose, onConfirm }: Props) {
                     購買日期
                   </label>
                   <input
-                    type="date"
+                    type="text"
                     value={form.purchaseDate}
                     onChange={(e) => setForm((p) => ({ ...p, purchaseDate: e.target.value }))}
+                    placeholder="年 / 月 / 日"
+                    onClick={(e:any)=>{e.currentTarget.type="date";setTimeout(()=>e.currentTarget.showPicker?.(),0)}}
+                    onBlur={(e:any)=>{if(!e.currentTarget.value)e.currentTarget.type="text"}}
                     className="w-full text-sm border border-[#d8dee6] rounded-lg px-[9px] py-[8px] focus:outline-none focus:border-[#23675f]"
                   />
                 </div>

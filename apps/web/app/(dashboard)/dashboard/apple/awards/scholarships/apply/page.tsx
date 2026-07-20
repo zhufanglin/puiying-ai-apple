@@ -61,7 +61,7 @@ export default function ApplyScholarshipPage() {
 
   return (
     <div>
-      <PageHeader backHref="/dashboard/apple/awards/scholarships"
+      <PageHeader 
         title="提交獎學金申請"
         subtitle="填寫學生資訊和申請理由"
         actions={

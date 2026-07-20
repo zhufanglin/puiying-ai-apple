@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable, { Column } from "@/components/ui/DataTable";
-import { Award, Plus, FileText, BarChart3, Layers } from "lucide-react";
+import FilterBar from "@/components/ui/FilterBar";
+import { Award, Plus, FileText, BarChart3, Download } from "lucide-react";
 
 interface AwardRecord {
   id: number;
@@ -29,6 +30,10 @@ export default function AwardsPage() {
   const [awards, setAwards] = useState<AwardRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState<Record<string, string>>({});
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [selectAll, setSelectAll] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const fetchAwards = async () => {
     try {
@@ -51,11 +56,59 @@ export default function AwardsPage() {
     fetchAwards();
   }, []);
 
-  const filtered = search
-    ? awards.filter((a) => a.title.includes(search) || (a.issuer || "").includes(search))
-    : awards;
+  const handleBatchExport = async () => {
+    if (selectedIds.size === 0) return;
+    setExporting(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/v1/apple/awards/batch-export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ ids: Array.from(selectedIds) }),
+      });
+      if (!res.ok) throw new Error("導出失敗");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = "certificates.zip"; a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error("導出失敗", e);
+      alert("批量導出失敗");
+    } finally {
+      setExporting(false);
+      setSelectedIds(new Set()); setSelectAll(false);
+    }
+  };
+
+  const filtered = awards.filter((a) => {
+    if (search && !a.title.includes(search) && !(a.issuer || "").includes(search)) return false;
+    if (filters.status && a.status !== filters.status) return false;
+    if (filters.title && !a.title.includes(filters.title)) return false;
+    return true;
+  });
 
   const columns: Column<AwardRecord>[] = [
+    {
+      key: "checkbox",
+      header: (
+        <input type="checkbox" checked={selectAll} onChange={(e) => {
+          setSelectAll(e.target.checked);
+          setSelectedIds(e.target.checked ? new Set(filtered.map(a => a.id)) : new Set());
+        }} />
+      ),
+      width: "40px",
+      render: (row) => (
+        <input type="checkbox" checked={selectedIds.has(row.id)} onChange={(e) => {
+          setSelectedIds(prev => {
+            const next = new Set(prev);
+            e.target.checked ? next.add(row.id) : next.delete(row.id);
+            return next;
+          });
+          setSelectAll(false);
+        }} />
+      ),
+    },
     {
       key: "title",
       header: "獎狀名稱",
@@ -112,58 +165,49 @@ export default function AwardsPage() {
         title="獎狀獎學金"
         subtitle="製作獎狀、管理獲獎名單、審批獎學金申請"
         actions={
-          <Link
-            href="/dashboard/apple/awards/create"
-            className="flex items-center gap-1.5 px-4 py-2 text-sm text-white bg-primary-500 rounded-lg hover:bg-primary-600 transition"
-          >
-            <Plus size={16} /> 新增獎狀
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/dashboard/apple/awards/scholarships"
+              className="flex items-center gap-1.5 px-4 py-2 text-sm border border-[#d8dee6] rounded-lg font-bold text-[#344054] hover:bg-[#f1f5f8] transition"
+            >
+              <FileText size={16} className="text-green-500" /> 獎學金管理
+            </Link>
+            <Link
+              href="/dashboard/apple/awards/statistics"
+              className="flex items-center gap-1.5 px-4 py-2 text-sm border border-[#d8dee6] rounded-lg font-bold text-[#344054] hover:bg-[#f1f5f8] transition"
+            >
+              <BarChart3 size={16} className="text-purple-500" /> 統計分析
+            </Link>
+            <Link
+              href="/dashboard/apple/awards/create"
+              className="flex items-center gap-1.5 px-4 py-2 text-sm text-white bg-primary-500 rounded-lg hover:bg-primary-600 transition"
+            >
+              <Plus size={16} /> 新增獎狀
+            </Link>
+          </div>
         }
       />
 
-      {/* 快捷入口 */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-        <Link
-          href="/dashboard/apple/awards/batch"
-          className="flex items-center gap-2 px-4 py-3 rounded-lg border border-gray-200 bg-white hover:border-primary-300 hover:shadow-sm transition group"
-        >
-          <Layers size={18} className="text-primary-500" />
-          <span className="text-sm text-gray-700 group-hover:text-primary-700">批量生成</span>
-        </Link>
-        <Link
-          href="/dashboard/apple/awards/generate"
-          className="flex items-center gap-2 px-4 py-3 rounded-lg border border-gray-200 bg-white hover:border-primary-300 hover:shadow-sm transition group"
-        >
-          <FileText size={18} className="text-green-500" />
-          <span className="text-sm text-gray-700 group-hover:text-green-700">導出證書</span>
-        </Link>
-        <Link
-          href="/dashboard/apple/awards/scholarships"
-          className="flex items-center gap-2 px-4 py-3 rounded-lg border border-gray-200 bg-white hover:border-primary-300 hover:shadow-sm transition group"
-        >
-          <Award size={18} className="text-orange-500" />
-          <span className="text-sm text-gray-700 group-hover:text-orange-700">獎學金管理</span>
-        </Link>
-        <Link
-          href="/dashboard/apple/awards/statistics"
-          className="flex items-center gap-2 px-4 py-3 rounded-lg border border-gray-200 bg-white hover:border-primary-300 hover:shadow-sm transition group"
-        >
-          <BarChart3 size={18} className="text-purple-500" />
-          <span className="text-sm text-gray-700 group-hover:text-purple-700">統計分析</span>
-        </Link>
-      </div>
+      <FilterBar
+        fields={[
+          { key: "title", label: "名稱", type: "text", placeholder: "搜尋獎狀名稱..." },
+          { key: "status", label: "狀態", type: "select",
+            options: [
+              { label: "草稿", value: "draft" },
+              { label: "待審批", value: "pending" },
+              { label: "已確認", value: "confirmed" },
+              { label: "已發佈", value: "published" },
+              { label: "已取消", value: "cancelled" },
+            ],
+          },
+        ]}
+        values={filters}
+        onChange={(k, v) => setFilters(p => ({ ...p, [k]: v }))}
+        onReset={() => setFilters({})}
+        onSearch={() => {}}
+      />
 
-      {/* 搜索 */}
-      <div className="flex items-center gap-4 mb-4">
-        <div className="flex-1 max-w-xs">
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="搜尋獎狀名稱..."
-            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-          />
-        </div>
+      <div className="flex items-center justify-between mb-4">
         <span className="text-sm text-gray-500">
           {loading ? "加載中..." : `共 ${filtered.length} 份獎狀`}
         </span>
@@ -176,6 +220,16 @@ export default function AwardsPage() {
         loading={loading}
         emptyText="暫無獎狀數據，點擊「新增獎狀」開始製作"
       />
+
+      {selectedIds.size > 0 && (
+        <div className="sticky bottom-4 mt-4 flex items-center justify-between bg-primary-600 text-white px-5 py-3 rounded-xl shadow-lg">
+          <span className="text-sm font-medium">已選 {selectedIds.size} 份獎狀</span>
+          <button onClick={handleBatchExport} disabled={exporting}
+            className="flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium bg-white text-primary-700 rounded-lg hover:bg-gray-50 disabled:opacity-50">
+            <Download size={15} /> {exporting ? "導出中..." : "批量導出 PDF"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

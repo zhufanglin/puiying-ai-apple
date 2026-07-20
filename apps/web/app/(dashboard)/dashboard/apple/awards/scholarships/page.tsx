@@ -156,12 +156,20 @@ export default function ScholarshipsListPage() {
         title="獎學金申請"
         subtitle="查看和管理學生獎學金申請"
         actions={
-          <button
-            onClick={() => router.push("/dashboard/apple/awards/scholarships/apply")}
-            className="flex items-center gap-1.5 px-4 py-2 text-sm text-white bg-primary-500 rounded-lg hover:bg-primary-600"
-          >
-            <Plus size={16} /> 提交申請
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => router.push("/dashboard/apple/awards/scholarships/apply")}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm text-white bg-primary-500 rounded-lg hover:bg-primary-600"
+            >
+              <Plus size={16} /> 提交申請
+            </button>
+            <button
+              onClick={() => router.push("/dashboard/apple/awards/scholarships/review")}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm border border-[#d8dee6] rounded-lg font-bold hover:bg-[#f1f5f8]"
+            >
+              <CheckCircle size={16} /> 審核工作台
+            </button>
+          </div>
         }
       />
 

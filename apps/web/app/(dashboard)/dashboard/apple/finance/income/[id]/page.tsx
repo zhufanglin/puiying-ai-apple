@@ -1,11 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, TrendingUp, Clock, User, Calendar, DollarSign } from "lucide-react";
+import { api } from "@/lib/api";
 
 const B = "#23675f"; const BG = "#f6f7f9"; const BD = "#d8dee6"; const MU = "#667085";
 
-// 與 finance 頁面共享的 mock 數據
 const MOCK_INCOME = [
   { id:1, date:"2026-07-15", project:"中六畢業禮活動經費", amount:1500, paymentMethod:"現金", handler:"陳大明", status:"confirmed" },
   { id:2, date:"2026-07-14", project:"春季運動會贊助款", amount:5000, paymentMethod:"銀行轉賬", handler:"李小華", status:"confirmed" },
@@ -31,8 +32,53 @@ export default function IncomeDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = parseInt(params.id as string);
-  const record = MOCK_INCOME.find(r => r.id === id);
+  const [record, setRecord] = useState<typeof MOCK_INCOME[0] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ project: "", amount: "", date: "", handler: "" });
 
+  const startEdit = () => {
+    if (!record) return;
+    setEditForm({ project: record.project, amount: String(record.amount), date: record.date, handler: record.handler });
+    setEditing(true);
+  };
+  const cancelEdit = () => setEditing(false);
+  const saveEdit = async () => {
+    if (!record) return;
+    try {
+      await api.put(`/apple/finance/income/${record.id}`, {
+        project: editForm.project, amount: parseFloat(editForm.amount),
+        date: editForm.date, handler: editForm.handler,
+      });
+    } catch { /* 忽略 */ }
+    setRecord({ ...record, project: editForm.project, amount: parseFloat(editForm.amount), date: editForm.date, handler: editForm.handler });
+    setEditing(false);
+  };
+
+  const confirmRecord = async () => {
+    if (!record) return;
+    try {
+      await api.put(`/apple/finance/income/${record.id}`, { status: "confirmed" });
+      setRecord({ ...record, status: "confirmed" });
+    } catch {
+      setRecord({ ...record, status: "confirmed" }); // 本地兜底
+    }
+  };
+
+  useEffect(() => {
+    let c = false;
+    api.get<any>(`/apple/finance/income/${id}`)
+      .then(res => {
+        if (c) return;
+        const d = res.data ?? res;
+        setRecord(d ? { id:d.id??id, date:d.date?.slice(0,10)??"", project:d.project??d.name??"", amount:d.amount??0, paymentMethod:d.payment_method??"現金", handler:d.handler??"-", status:d.status??"pending" } : null);
+      })
+      .catch(() => { if (!c) setRecord(MOCK_INCOME.find(r => r.id === id) ?? null); })
+      .finally(() => { if (!c) setLoading(false); });
+    return () => { c = true; };
+  }, [id]);
+
+  if (loading) return <div style={{background:BG}} className="min-h-screen" />;
   if (!record) {
     return (
       <div style={{background:BG}} className="min-h-screen flex items-center justify-center">
@@ -61,7 +107,9 @@ export default function IncomeDetailPage() {
             <h2 className="text-xl font-bold text-[#1d2939]">{record.project}</h2>
             <p className="text-sm text-[#667085] mt-1">收入記錄 #{record.id}</p>
           </div>
-          <Pill label={statusLabel} tone={statusTone}/>
+          <div className="flex items-center gap-3">
+            <Pill label={statusLabel} tone={statusTone}/>
+          </div>
         </div>
       </div>
 
@@ -71,27 +119,50 @@ export default function IncomeDetailPage() {
           <h3 className="text-[16px] font-bold text-[#1d2939] mb-4">基本信息</h3>
           <div className="space-y-3">
             {[
-              { icon:Calendar, label:"日期", value:record.date },
-              { icon:DollarSign, label:"金額", value:`HK$ ${record.amount.toLocaleString()}` },
-              { icon:TrendingUp, label:"支付方式", value:record.paymentMethod },
-              { icon:User, label:"經手人", value:record.handler },
+              { icon:Calendar, label:"日期", value:record.date, key:"date" },
+              { icon:DollarSign, label:"金額", value:`HK$ ${record.amount.toLocaleString()}`, key:"amount" },
+              { icon:TrendingUp, label:"支付方式", value:record.paymentMethod, key:"paymentMethod" },
+              { icon:User, label:"經手人", value:record.handler, key:"handler" },
             ].map((item,i)=>(
               <div key={i} className="flex items-center gap-3 py-2 border-b border-[#d8dee6] last:border-0">
                 <item.icon size={16} className="text-[#667085] shrink-0"/>
                 <span className="text-sm text-[#667085] w-20">{item.label}</span>
-                <span className="text-sm font-bold text-[#1d2939]">{item.value}</span>
+                {editing && (item.key==="date"||item.key==="amount"||item.key==="handler") ? (
+                  <input
+                    value={item.key==="date"?editForm.date:item.key==="amount"?editForm.amount:editForm.handler}
+                    onChange={e=>setEditForm(p=>({...p,[item.key]:e.target.value}))}
+                    className="text-sm font-bold border border-[#d8dee6] rounded px-2 py-1 flex-1"
+                  />
+                ) : (
+                  <span className="text-sm font-bold text-[#1d2939]">{item.value}</span>
+                )}
               </div>
             ))}
           </div>
+          {editing && (
+            <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-[#d8dee6]">
+              <button onClick={cancelEdit} className="px-4 py-1.5 text-sm border border-[#d8dee6] rounded font-bold">取消</button>
+              <button onClick={saveEdit} className="px-4 py-1.5 text-sm text-white rounded font-bold" style={{background:B}}>保存</button>
+            </div>
+          )}
         </div>
 
         <div className="bg-white rounded-lg border border-[#d8dee6] p-5" style={{boxShadow:"0 10px 30px rgba(16,24,40,0.08)"}}>
-          <h3 className="text-[16px] font-bold text-[#1d2939] mb-4">相關單據</h3>
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <Clock size={40} className="text-[#d8dee6] mb-3"/>
-            <p className="text-sm text-[#667085]">暫無上傳收據</p>
-            <button className="mt-3 px-4 py-2 text-sm text-white rounded-lg font-bold" style={{background:B}}>上傳收據</button>
-          </div>
+          <h3 className="text-[16px] font-bold text-[#1d2939] mb-4">確認入賬</h3>
+          {record.status !== "confirmed" ? (
+            <div className="flex flex-col items-center justify-center py-6 text-center">
+              <p className="text-sm text-[#667085] mb-4">該筆收入尚未確認入賬</p>
+              <div className="flex gap-2">
+                <button onClick={startEdit} className="px-4 py-2 text-sm border border-[#d8dee6] rounded-lg font-bold text-[#1d2939] hover:bg-[#f1f5f8]">修改</button>
+                <button onClick={confirmRecord} className="px-6 py-2 text-sm text-white rounded-lg font-bold" style={{background:B}}>確認入賬</button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-6 text-center">
+              <DollarSign size={40} className="text-[#027a48] mb-3"/>
+              <p className="text-sm font-bold text-[#027a48]">已入賬</p>
+            </div>
+          )}
         </div>
       </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { TrendingUp, DollarSign, Clock, CheckCircle, FileText, Plus, Search, Upload } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
@@ -104,16 +104,46 @@ export default function FinancePage() {
   const [expenseOpen, setExpenseOpen] = useState(false);
   const [quotationOpen, setQuotationOpen] = useState(false);
   const [incomeData, setIncomeData] = useState<IncomeRecord[]>(MOCK_INCOME);
-  const [expenseData] = useState<ExpenseRecord[]>(MOCK_EXPENSE);
-  const [quotationData] = useState<QuotationRecord[]>(MOCK_QUOTATION);
+  const [expenseData, setExpenseData] = useState<ExpenseRecord[]>(MOCK_EXPENSE);
+  const [quotationData, setQuotationData] = useState<QuotationRecord[]>(MOCK_QUOTATION);
   const [ifilters, setIfilters] = useState<Record<string,string>>({});
   const [efilters, setEfilters] = useState<Record<string,string>>({});
 
+  // 從 API 加載收入/支出
+  const mapInc = (items: any[]): IncomeRecord[] => items.map((r: any) => ({
+    id: r.id, date: r.date?.slice(0,10)??"", project: r.project??r.name??"",
+    amount: r.amount??0, paymentMethod: r.payment_method??"現金",
+    handler: r.handler??"-", status: r.status??"pending",
+  }));
+  const mapExp = (items: any[]): ExpenseRecord[] => items.map((r: any) => ({
+    id: r.id, invoiceNo: r.invoice_no??"-", supplier: r.supplier??r.project??"-",
+    project: r.project??r.name??"-", amount: r.amount??0,
+    approver: r.approver??r.handler??"-", status: r.status??"pending",
+  }));
+
+  const loadFromAPI = async () => {
+    try {
+      const [incRes, expRes] = await Promise.all([
+        api.get<{items:any[]}>("/apple/finance/income"),
+        api.get<{items:any[]}>("/apple/finance/expense"),
+      ]);
+      if (incRes.data?.items?.length) setIncomeData(mapInc(incRes.data.items));
+      if (expRes.data?.items?.length) setExpenseData(mapExp(expRes.data.items));
+      const qRes = await api.get<{items:any[]}>("/apple/finance/quotations").catch(() => ({} as any));
+      if (qRes.data?.items?.length) setQuotationData(qRes.data.items.map((r:any) => ({
+        id: r.id, projectName: r.project_name??r.projectName??r.project??"",
+        vendor: r.vendor??"", amount: r.amount??0,
+        isLowest: r.is_lowest??r.isLowest??false, isSelected: r.is_selected??r.isSelected??false,
+        remark: r.remark??"",
+      })));
+    } catch { /* Mock 兜底 */ }
+  };
+  useEffect(() => { loadFromAPI(); }, []);
+
   const handleReceipt = async (r: { amount:number|null; date:string; payer:string; purpose:string; fileId?:number }) => {
-    let id = incomeData.length + 1;
     if (r.amount && r.date && r.purpose && r.payer) {
       try {
-        const response = await api.post<{ id: number }>("/apple/finance/income", {
+        await api.post("/apple/finance/income", {
           type: "income",
           date: r.date,
           project: r.purpose,
@@ -122,16 +152,16 @@ export default function FinancePage() {
           handler: r.payer,
           file_id: r.fileId,
         });
-        id = response.data.id;
+        await loadFromAPI(); // 重新加載列表
       } catch {
-        // 後端不可用時仍保留本地演示資料。
+        // API 不可用，本地追加
+        const n: IncomeRecord = {
+          id: incomeData.length + 1, date: r.date, project: r.purpose,
+          amount: r.amount??0, paymentMethod:"現金", handler: r.payer, status:"pending",
+        };
+        setIncomeData(p=>[n,...p]);
       }
     }
-    const n: IncomeRecord = {
-      id, date: r.date, project: r.purpose,
-      amount: r.amount??0, paymentMethod:"現金", handler: r.payer, status:"pending",
-    };
-    setIncomeData(p=>[n,...p]);
   };
 
   // ─── 列 ───
@@ -145,7 +175,6 @@ export default function FinancePage() {
     { key:"actions", header:"操作", render: r => (
       <div className="flex items-center gap-2">
         <Link href={`/dashboard/apple/finance/income/${r.id}`} className="text-xs font-bold text-[#23675f] hover:underline">查看詳情</Link>
-        {r.status==="pending" && <button onClick={()=>setReceiptOpen(true)} className="inline-flex items-center gap-1 text-xs text-[#667085] hover:text-[#23675f]"><Upload size={12}/>上傳收據</button>}
       </div>
     )},
   ];
@@ -160,7 +189,6 @@ export default function FinancePage() {
     { key:"actions", header:"操作", render: r => (
       <div className="flex items-center gap-2">
         <Link href={`/dashboard/apple/finance/expense/${r.id}`} className="text-xs font-bold text-[#23675f] hover:underline">查看詳情</Link>
-        {r.status==="pending" && <button className="inline-flex items-center gap-1 text-xs text-[#667085] hover:text-[#23675f]"><Upload size={12}/>上傳發票</button>}
       </div>
     )},
   ];
@@ -287,6 +315,13 @@ export default function FinancePage() {
 
                   <div className="bg-white rounded-lg border border-[#d8dee6] overflow-hidden" style={{boxShadow:SH}}>
                     <table className="w-full border-collapse table-fixed">
+                      <colgroup>
+                        <col style={{width:"24%"}}/>
+                        <col style={{width:"22%"}}/>
+                        <col style={{width:"18%"}}/>
+                        <col style={{width:"14%"}}/>
+                        <col style={{width:"22%"}}/>
+                      </colgroup>
                       <thead>
                         <tr className="border-b border-[#d8dee6] bg-[#f8fafc]">
                           {["項目名","報價單位","報價金額","是否最低","備註"].map(h=>(
@@ -299,7 +334,7 @@ export default function FinancePage() {
                           <tr key={row.id} className={`border-b border-[#d8dee6] last:border-0 text-[13px] ${qRowClass(row, quotationData)}`}>
                             <td className="px-[8px] py-[8px] text-[#1d2939]">{row.projectName}</td>
                             <td className="px-[8px] py-[8px] text-[#1d2939]">{row.vendor}</td>
-                            <td className="px-[8px] py-[8px] text-right font-bold text-[#1d2939]">HK$ {row.amount.toLocaleString()}</td>
+                            <td className="px-[8px] py-[8px] font-bold text-[#1d2939]">HK$ {row.amount.toLocaleString()}</td>
                             <td className="px-[8px] py-[8px]">{row.isLowest ? <Pill label="最低價" tone="good"/> : <span className="text-xs text-[#667085]">—</span>}</td>
                             <td className="px-[8px] py-[8px] text-[#667085] text-[13px]">{row.remark||"—"}</td>
                           </tr>
@@ -315,8 +350,8 @@ export default function FinancePage() {
       )}
 
       <UploadReceiptDialog open={receiptOpen} onClose={()=>setReceiptOpen(false)} onConfirm={handleReceipt} />
-      <ExpenseCreateDialog open={expenseOpen} onClose={()=>setExpenseOpen(false)} onSuccess={()=>{}} />
-      <QuotationCreateDialog open={quotationOpen} onClose={()=>setQuotationOpen(false)} onSuccess={()=>{}} />
+      <ExpenseCreateDialog open={expenseOpen} onClose={()=>setExpenseOpen(false)} onSuccess={()=>loadFromAPI()} />
+      <QuotationCreateDialog open={quotationOpen} onClose={()=>setQuotationOpen(false)} onSuccess={()=>{setQuotationOpen(false);loadFromAPI();}} />
     </div>
   );
 }
