@@ -78,8 +78,8 @@ services:
   # ---- Celery Worker (OCR) ----
   worker:
     build:
-      context: ./workers/ocr_worker
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./workers/ocr_worker/Dockerfile
     container_name: puiying-worker
     restart: unless-stopped
     depends_on:
@@ -90,8 +90,15 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://puiying:puiying_dev@db:5432/puiying_apple
       REDIS_URL: redis://redis:6379/0
+      BAIDU_OCR_API_KEY: ${BAIDU_OCR_API_KEY:-}
+      BAIDU_OCR_SECRET_KEY: ${BAIDU_OCR_SECRET_KEY:-}
+      BAIDU_OCR_ACCESS_TOKEN: ${BAIDU_OCR_ACCESS_TOKEN:-}
+      BAIDU_OCR_RECEIPT_MODE: ${BAIDU_OCR_RECEIPT_MODE:-handwriting}
+      BAIDU_OCR_DOCUMENT_MODE: ${BAIDU_OCR_DOCUMENT_MODE:-general_basic}
+      BAIDU_OCR_TIMEOUT: ${BAIDU_OCR_TIMEOUT:-20}
     volumes:
-      - ./workers/ocr_worker:/app
+      - ./apps/api/app:/app/app
+      - ./workers:/app/workers
       - uploads:/app/uploads
 
 volumes:
