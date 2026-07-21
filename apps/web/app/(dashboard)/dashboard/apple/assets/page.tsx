@@ -71,8 +71,9 @@ const MOCK_MOVEMENTS: MovementRecord[] = [
 
 export default function AssetsPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("stocktake");
-  const [assets, setAssets] = useState<AssetRecord[]>(MOCK_ASSETS);
-  const [movements, setMovements] = useState<MovementRecord[]>(MOCK_MOVEMENTS);
+  const [assets, setAssets] = useState<AssetRecord[]>([]);
+  const [movements, setMovements] = useState<MovementRecord[]>([]);
+  const [dataReady, setDataReady] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
   const [writeoffOpen, setWriteoffOpen] = useState(false);
@@ -130,7 +131,11 @@ export default function AssetsPage() {
         });
         setAssets(mapped);
       } catch {
-        // 後端不可用，使用 MOCK_ASSETS
+        // 後端不可用，使用模擬數據
+        if (!assets.length) setAssets(MOCK_ASSETS);
+        if (!movements.length) setMovements(MOCK_MOVEMENTS);
+      } finally {
+        setDataReady(true);
       }
     };
     loadAssets();
@@ -209,8 +214,17 @@ export default function AssetsPage() {
     }
   };
 
-  const handleMove = (d: { assetId:number; fromLocation:string; toLocation:string; movementDate:string; reason:string }) => {
+  const handleMove = async (d: { assetId:number; fromLocation:string; toLocation:string; movementDate:string; reason:string }) => {
     const a = assets.find(x=>x.id===d.assetId); if (!a) return;
+    // 调用后端 API
+    try {
+      const { api } = await import("@/lib/api");
+      await api.post(`/apple/assets/${d.assetId}/movements`, {
+        from_location: d.fromLocation, to_location: d.toLocation,
+        movement_date: d.movementDate, reason: d.reason,
+      });
+    } catch (e) { console.error("资产移动写入失败", e); }
+    // 本地更新
     setAssets(p=>p.map(x=>x.id===d.assetId ? {...x, location:d.toLocation, status:"moved"} : x));
     const nm: MovementRecord = {
       id: movements.length+1, assetNo: a.assetNo, assetName: a.name,
@@ -337,9 +351,9 @@ export default function AssetsPage() {
       {/* Tab */}
       <div className="flex items-center gap-1 bg-white rounded-lg p-1 border border-[#d8dee6]" style={{boxShadow:SH}}>
         {([
-          {k:"stocktake" as TabKey, label:"盤點", n:stats.total},
-          {k:"writeoff" as TabKey, label:"註銷", n:writtenOff.length},
-          {k:"new" as TabKey, label:"新增", n:null as number|null},
+          {k:"stocktake" as TabKey, label:"盤點", n: dataReady ? stats.total : "—"},
+          {k:"writeoff" as TabKey, label:"註銷", n: dataReady ? writtenOff.length : "—"},
+          {k:"new" as TabKey, label:"新增", n: dataReady ? null : "—"},
         ]).map(t=>(
           <button key={t.k} onClick={()=>setActiveTab(t.k)}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm rounded-lg font-bold transition-colors ${

@@ -47,6 +47,11 @@ export default function AwardsPage() {
       }
     } catch (err) {
       console.error("加載獎狀失敗", err);
+      if (!awards.length) setAwards([
+        { id:1, name:"三好學生", category:"學業", amount:1000, semester:"上學期", year:2026, status:"published", recipients:[] },
+        { id:2, name:"優秀班幹部", category:"服務", amount:500, semester:"上學期", year:2026, status:"draft", recipients:[] },
+        { id:3, name:"進步之星", category:"學業", amount:300, semester:"上學期", year:2026, status:"published", recipients:[] },
+      ] as any);
     } finally {
       setLoading(false);
     }

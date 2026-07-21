@@ -7,6 +7,7 @@
 - POST   /expense                     新增支出
 - GET    /quotations                  报价单列表
 - POST   /quotations                  新增报价单
+- GET    /quotations/{id}             报价单详情
 - POST   /quotations/analyze          报价分析
 - POST   /address-labels              生成地址 LABEL
 
@@ -25,6 +26,7 @@ from app.db.session import get_db
 from app.modules.accounts.models import User
 from app.modules.audit.models import AuditLog
 from app.modules.apple.finance import repository, service
+from app.modules.apple.finance.models import FinanceRecord, Quotation
 from app.modules.apple.finance.schemas import (
     AddressLabelRequest,
     AddressLabelResponse,
@@ -37,6 +39,38 @@ from app.modules.apple.finance.schemas import (
 )
 
 router = APIRouter()
+
+
+# ═══════════════════════════════════════════════════════════
+# 统计
+# ═══════════════════════════════════════════════════════════
+
+@router.get("/summary", response_model=APIResponse[dict])
+async def finance_summary(
+    db: AsyncSession = Depends(get_db),
+    _user: User = Depends(get_current_user),
+    __: User = Depends(require_permission(Permissions.FINANCE_READ)),
+):
+    """财务统计总览"""
+    from sqlalchemy import func, select as sa_select
+    income_count = (await db.execute(sa_select(func.count()).select_from(FinanceRecord).where(FinanceRecord.type == "income"))).scalar() or 0
+    expense_count = (await db.execute(sa_select(func.count()).select_from(FinanceRecord).where(FinanceRecord.type == "expense"))).scalar() or 0
+    total_income = (await db.execute(sa_select(func.coalesce(func.sum(FinanceRecord.amount), 0)).where(FinanceRecord.type == "income", FinanceRecord.status == "confirmed"))).scalar() or 0
+    total_expense = (await db.execute(sa_select(func.coalesce(func.sum(FinanceRecord.amount), 0)).where(FinanceRecord.type == "expense", FinanceRecord.status == "confirmed"))).scalar() or 0
+    pending_income = (await db.execute(sa_select(func.count()).select_from(FinanceRecord).where(FinanceRecord.type == "income", FinanceRecord.status == "pending"))).scalar() or 0
+    pending_expense = (await db.execute(sa_select(func.count()).select_from(FinanceRecord).where(FinanceRecord.type == "expense", FinanceRecord.status == "pending"))).scalar() or 0
+    quotation_count = (await db.execute(sa_select(func.count()).select_from(Quotation))).scalar() or 0
+
+    return APIResponse(data={
+        "incomeCount": income_count,
+        "expenseCount": expense_count,
+        "totalIncome": float(total_income),
+        "totalExpense": float(total_expense),
+        "pendingIncome": pending_income,
+        "pendingExpense": pending_expense,
+        "quotationCount": quotation_count,
+        "netAmount": float(total_income) - float(total_expense),
+    })
 
 
 # ═══════════════════════════════════════════════════════════
@@ -271,6 +305,19 @@ async def analyze_quotations(
     """报价单分析（AI 规则引擎）— 自动识别单一报价/未采纳最低报价"""
     result = await service.quotation_analyze(db)
     return APIResponse(data=result)
+
+
+@router.get("/quotations/{quotation_id}", response_model=APIResponse[QuotationResponse])
+async def get_quotation(
+    quotation_id: int, db: AsyncSession = Depends(get_db),
+    _user: User = Depends(get_current_user),
+    __: User = Depends(require_permission(Permissions.FINANCE_READ)),
+):
+    """报价单详情"""
+    q = await repository.get_quotation_by_id(db, quotation_id)
+    if not q:
+        raise_error(NOT_FOUND, detail="報價單不存在")
+    return APIResponse(data=q)
 
 
 # ═══════════════════════════════════════════════════════════

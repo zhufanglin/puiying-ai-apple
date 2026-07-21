@@ -29,7 +29,7 @@ export default function StudentDetailPage() {
   if (!student) return <section className="error-box">{message}</section>;
 
   return <>
-    <PageHeader backHref="/dashboard/apple/students" eyebrow="APPLE / 學生事務" title={`${student.nameZh} · ${student.studentNo}`} description={`${student.className} 班 · ${studentStatusLabel(student.status)}`} actions={<a className="button" href="/dashboard/apple/students">返回學生總覽</a>} />
+    <PageHeader eyebrow="APPLE / 學生事務" title={`${student.nameZh} · ${student.studentNo}`} description={`${student.className} 班 · ${studentStatusLabel(student.status)}`} actions={<a className="button" href="/dashboard/apple/students">返回學生總覽</a>} />
     {message && <section className="notice">{message}</section>}
     <section className="panel student-identity"><div className="student-avatar">{student.photoUrl ? <img src={studentMediaUrl(student.photoUrl)} alt={`${student.nameZh} 學生照片`} /> : <span>{student.nameZh.slice(-1)}</span>}</div><div><strong>{student.nameZh}</strong><p>{student.nameEn || "未登記英文姓名"}</p><div className="card-line"><span className="pill brand">{student.studentNo}</span><span className="pill good">{student.className}</span></div></div></section>
     <section className="panel">

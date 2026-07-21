@@ -1,0 +1,37 @@
+# Render 部署配置
+# 使用方法：在 Render Dashboard 创建 Web Service → 选择 "Deploy from Git Repository"
+# Render 会自动读取此文件
+
+services:
+  - type: web
+    name: puiying-apple
+    runtime: docker
+    repo: https://github.com/zhufanglin/puiying-ai-apple
+    branch: main
+    dockerfilePath: ./Dockerfile.render
+    plan: free
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: PORT
+        value: "10000"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: puiying-apple-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DEBUG
+        value: "false"
+      - key: API_PORT
+        value: "8001"
+      - key: WEB_PORT
+        value: "3000"
+
+  # 可选：免费 PostgreSQL
+  # - type: pserv
+  #   name: puiying-apple-db
+  #   plan: free
+  #   ipAllowList: []
+
+# 如需 SQLite（免费磁盘临时，重启清空），删除上面 fromDatabase 行，
+# 改用：DATABASE_URL=sqlite+aiosqlite:///./prod.db

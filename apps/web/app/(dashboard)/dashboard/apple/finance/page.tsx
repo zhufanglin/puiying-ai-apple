@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { TrendingUp, DollarSign, Clock, CheckCircle, FileText, Plus, Search, Upload } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { TrendingUp, DollarSign, Clock, CheckCircle, FileText, Plus, Search, Upload, Mail } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import StatsCard from "@/components/ui/StatsCard";
 import DataTable, { type Column } from "@/components/ui/DataTable";
@@ -100,24 +101,26 @@ const Pill = ({ label, tone }: { label: string; tone: "good"|"warning"|"danger"|
    ================================================================ */
 export default function FinancePage() {
   const [activeTab, setActiveTab] = useState<TabKey>("income");
+  const router = useRouter();
   const [receiptOpen, setReceiptOpen] = useState(false);
   const [expenseOpen, setExpenseOpen] = useState(false);
   const [quotationOpen, setQuotationOpen] = useState(false);
-  const [incomeData, setIncomeData] = useState<IncomeRecord[]>(MOCK_INCOME);
-  const [expenseData, setExpenseData] = useState<ExpenseRecord[]>(MOCK_EXPENSE);
-  const [quotationData, setQuotationData] = useState<QuotationRecord[]>(MOCK_QUOTATION);
+  const [incomeData, setIncomeData] = useState<IncomeRecord[]>([]);
+  const [expenseData, setExpenseData] = useState<ExpenseRecord[]>([]);
+  const [quotationData, setQuotationData] = useState<QuotationRecord[]>([]);
+  const [dataReady, setDataReady] = useState(false);
   const [ifilters, setIfilters] = useState<Record<string,string>>({});
   const [efilters, setEfilters] = useState<Record<string,string>>({});
 
   // 從 API 加載收入/支出
   const mapInc = (items: any[]): IncomeRecord[] => items.map((r: any) => ({
     id: r.id, date: r.date?.slice(0,10)??"", project: r.project??r.name??"",
-    amount: r.amount??0, paymentMethod: r.payment_method??"現金",
+    amount: Number(r.amount)||0, paymentMethod: r.payment_method??"現金",
     handler: r.handler??"-", status: r.status??"pending",
   }));
   const mapExp = (items: any[]): ExpenseRecord[] => items.map((r: any) => ({
     id: r.id, invoiceNo: r.invoice_no??"-", supplier: r.supplier??r.project??"-",
-    project: r.project??r.name??"-", amount: r.amount??0,
+    project: r.project??r.name??"-", amount: Number(r.amount)||0,
     approver: r.approver??r.handler??"-", status: r.status??"pending",
   }));
 
@@ -136,7 +139,14 @@ export default function FinancePage() {
         isLowest: r.is_lowest??r.isLowest??false, isSelected: r.is_selected??r.isSelected??false,
         remark: r.remark??"",
       })));
-    } catch { /* Mock 兜底 */ }
+    } catch {
+      // Mock 兜底：API 不可用时使用内置演示数据
+      if (!incomeData.length) setIncomeData(MOCK_INCOME);
+      if (!expenseData.length) setExpenseData(MOCK_EXPENSE);
+      if (!quotationData.length) setQuotationData(MOCK_QUOTATION);
+    } finally {
+      setDataReady(true);
+    }
   };
   useEffect(() => { loadFromAPI(); }, []);
 
@@ -219,20 +229,26 @@ export default function FinancePage() {
         title="財務收支"
         subtitle="收支記錄管理、票據 OCR 識別、分類統計"
         actions={
-          <button style={{background:B, borderColor:B}}
-            className="flex items-center gap-1.5 px-4 py-[8px] text-sm text-white rounded-lg font-bold hover:opacity-90"
-            onClick={() => activeTab==="income" ? setReceiptOpen(true) : activeTab==="expense" ? setExpenseOpen(true) : setQuotationOpen(true)}>
-            <Plus size={16}/> {activeTab==="income"?"新增收入":activeTab==="expense"?"新增支出":"新增報價單"}
-          </button>
+          <div className="flex items-center gap-2">
+            <button className="flex items-center gap-1.5 px-4 py-[8px] text-sm border border-[#d8dee6] rounded-lg font-bold text-[#1d2939] hover:bg-[#f1f5f8]"
+              onClick={()=>router.push("/dashboard/apple/finance/address-labels")}>
+              <Mail size={14}/> 地址標籤
+            </button>
+            <button style={{background:B, borderColor:B}}
+              className="flex items-center gap-1.5 px-4 py-[8px] text-sm text-white rounded-lg font-bold hover:opacity-90"
+              onClick={() => activeTab==="income" ? setReceiptOpen(true) : activeTab==="expense" ? setExpenseOpen(true) : setQuotationOpen(true)}>
+              <Plus size={16}/> {activeTab==="income"?"新增收入":activeTab==="expense"?"新增支出":"新增報價單"}
+            </button>
+          </div>
         }
       />
 
       {/* Tab */}
       <div className="flex items-center gap-1 bg-white rounded-lg p-1 border border-[#d8dee6]" style={{boxShadow:SH}}>
         {([
-          {k:"income" as TabKey, label:"收入", n:MOCK_INCOME.length},
-          {k:"expense" as TabKey, label:"支出", n:MOCK_EXPENSE.length},
-          {k:"quotations" as TabKey, label:"報價單", n:MOCK_QUOTATION.length},
+          {k:"income" as TabKey, label:"收入", n: dataReady ? incomeData.length : "—"},
+          {k:"expense" as TabKey, label:"支出", n: dataReady ? expenseData.length : "—"},
+          {k:"quotations" as TabKey, label:"報價單", n: dataReady ? quotationData.length : "—"},
         ]).map(t=>(
           <button key={t.k} onClick={()=>setActiveTab(t.k)}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm rounded-lg font-bold transition-colors ${
@@ -251,10 +267,10 @@ export default function FinancePage() {
       {activeTab==="income" && (
         <div className="space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatsCard label="本月收入" value={`HK$ ${INCOME_STATS.monthlyTotal.toLocaleString()}`} icon={DollarSign} trend="12.5%" trendUp color="text-[#23675f]" />
-            <StatsCard label="待入賬" value={`HK$ ${INCOME_STATS.pending.toLocaleString()}`} icon={Clock} color="text-[#936a00]" />
-            <StatsCard label="已入賬" value={`HK$ ${INCOME_STATS.confirmed.toLocaleString()}`} icon={CheckCircle} color="text-[#027a48]" />
-            <StatsCard label="單據數" value={INCOME_STATS.count} icon={FileText} color="text-[#155eef]" />
+            <StatsCard label="本月收入" value={`HK$ ${incomeData.reduce((s,r)=>s+r.amount,0).toLocaleString()}`} icon={DollarSign} trend="12.5%" trendUp color="text-[#23675f]" />
+            <StatsCard label="待入賬" value={`HK$ ${incomeData.filter(r=>r.status==="pending").reduce((s,r)=>s+r.amount,0).toLocaleString()}`} icon={Clock} color="text-[#936a00]" />
+            <StatsCard label="已入賬" value={`HK$ ${incomeData.filter(r=>r.status==="confirmed").reduce((s,r)=>s+r.amount,0).toLocaleString()}`} icon={CheckCircle} color="text-[#027a48]" />
+            <StatsCard label="單據數" value={incomeData.length} icon={FileText} color="text-[#155eef]" />
           </div>
 
           <FilterBar fields={[
@@ -270,10 +286,10 @@ export default function FinancePage() {
       {activeTab==="expense" && (
         <div className="space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatsCard label="本月支出" value={`HK$ ${MOCK_EXPENSE.reduce((s,r)=>s+r.amount,0).toLocaleString()}`} icon={DollarSign} trend="8.3%" color="text-[#23675f]" />
-            <StatsCard label="待審批" value={MOCK_EXPENSE.filter(r=>r.status==="pending").length} icon={Clock} color="text-[#936a00]" />
-            <StatsCard label="已審批" value={MOCK_EXPENSE.filter(r=>r.status==="approved").length} icon={CheckCircle} color="text-[#027a48]" />
-            <StatsCard label="單據數" value={MOCK_EXPENSE.length} icon={FileText} color="text-[#155eef]" />
+            <StatsCard label="本月支出" value={`HK$ ${expenseData.reduce((s,r)=>s+r.amount,0).toLocaleString()}`} icon={DollarSign} trend="8.3%" color="text-[#23675f]" />
+            <StatsCard label="待審批" value={expenseData.filter(r=>r.status==="pending").length} icon={Clock} color="text-[#936a00]" />
+            <StatsCard label="已審批" value={expenseData.filter(r=>r.status==="approved").length} icon={CheckCircle} color="text-[#027a48]" />
+            <StatsCard label="單據數" value={expenseData.length} icon={FileText} color="text-[#155eef]" />
           </div>
 
           <FilterBar fields={[
@@ -331,8 +347,9 @@ export default function FinancePage() {
                       </thead>
                       <tbody>
                         {items.map(row=>(
-                          <tr key={row.id} className={`border-b border-[#d8dee6] last:border-0 text-[13px] ${qRowClass(row, quotationData)}`}>
-                            <td className="px-[8px] py-[8px] text-[#1d2939]">{row.projectName}</td>
+                          <tr key={row.id} onClick={()=>router.push(`/dashboard/apple/finance/quotations/${row.id}`)}
+                            className={`border-b border-[#d8dee6] last:border-0 text-[13px] cursor-pointer hover:bg-[#f1f5f8] transition-colors ${qRowClass(row, quotationData)}`}>
+                            <td className="px-[8px] py-[8px] text-[#1d2939] underline">{row.projectName}</td>
                             <td className="px-[8px] py-[8px] text-[#1d2939]">{row.vendor}</td>
                             <td className="px-[8px] py-[8px] font-bold text-[#1d2939]">HK$ {row.amount.toLocaleString()}</td>
                             <td className="px-[8px] py-[8px]">{row.isLowest ? <Pill label="最低價" tone="good"/> : <span className="text-xs text-[#667085]">—</span>}</td>

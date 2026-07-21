@@ -24,6 +24,7 @@ from app.db.session import get_db
 from app.modules.accounts.models import User
 from app.modules.audit.models import AuditLog
 from app.modules.apple.assets import repository, service
+from app.modules.apple.assets.models import Asset
 from app.modules.apple.assets.schemas import (
     AssetCreate,
     AssetMovementCreate,
@@ -38,6 +39,29 @@ from app.modules.apple.assets.schemas import (
 )
 
 router = APIRouter()
+
+
+@router.get("/summary", response_model=APIResponse[dict])
+async def assets_summary(
+    db: AsyncSession = Depends(get_db),
+    _user: User = Depends(get_current_user),
+    __: User = Depends(require_permission(Permissions.ASSETS_READ)),
+):
+    """资产统计总览"""
+    from sqlalchemy import func, select as sa_select
+    total = (await db.execute(sa_select(func.count()).select_from(Asset))).scalar() or 0
+    active = (await db.execute(sa_select(func.count()).select_from(Asset).where(Asset.status == "active"))).scalar() or 0
+    maintenance = (await db.execute(sa_select(func.count()).select_from(Asset).where(Asset.status == "maintenance"))).scalar() or 0
+    written_off = (await db.execute(sa_select(func.count()).select_from(Asset).where(Asset.status == "written_off"))).scalar() or 0
+    total_value = (await db.execute(sa_select(func.coalesce(func.sum(Asset.purchase_amount), 0)))).scalar() or 0
+
+    return APIResponse(data={
+        "totalAssets": total,
+        "activeAssets": active,
+        "maintenanceAssets": maintenance,
+        "writtenOffAssets": written_off,
+        "totalValue": float(total_value),
+    })
 
 
 # ═══════════════════════════════════════════════════════════

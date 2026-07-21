@@ -230,8 +230,89 @@ async def seed():
             db.add(Asset(asset_no="AST-005", name="打印機 HP LaserJet", category="電子設備", location="校務處", status="written_off", purchase_date="2018-03-01", purchase_amount=3200, remark="已報廢 — 零件停產", created_by=1))
             print("  ✅ 5 件资产")
 
+        # ---- 批量演示数据（仅首次种子时填充，确保分页和筛选有足够数据） ----
+        import random
+
+        from sqlalchemy import func
+        result = await db.execute(select(func.count()).select_from(Student))
+        students_count = result.scalar() or 0
+        if students_count < 20:
+            print("批量生成演示数据...")
+
+            # 中文姓氏和名字
+            surnames = ["陳","張","李","王","劉","黃","何","周","吳","鄭","林","梁","謝","楊","馬","朱","許","郭","蔡","葉"]
+            given_names = ["志強","美玲","嘉怡","偉傑","小明","小華","家豪","淑芬","國棟","麗華","俊傑","慧敏","文輝","雅文","志明","詠詩","家偉","穎欣","浩賢","佩珊","俊偉","思琪","家輝","婉婷","國強","美琪","志偉"]
+            classes = ["中一甲","中一乙","中二甲","中二乙","中三甲","中三乙","中四甲","中四乙","中五甲","中五乙","中六甲"]
+            categories = ["電子設備","家具","電器","體育器材","圖書","樂器","實驗器材","辦公設備"]
+            locations = ["電腦室","教員室","校務處","圖書館","實驗室","禮堂","操場","音樂室","美術室","家政室","中一甲教室","中一乙教室","中二甲教室","中二乙教室","中三甲教室","中三乙教室","中四甲教室","中四乙教室","中五甲教室","中五乙教室","中六甲教室"]
+            payment_methods = ["現金","銀行轉賬","支票","八達通"]
+            income_projects = ["學費","雜費","活動費","圖書館罰款","校服費","課後輔導費","午餐費","校車費","書簿費","考試費","社費","學會會費"]
+            expense_projects = ["購買教具","維修保養","水電費","清潔用品","文具採購","活動佈置","印刷費","郵寄費","保險費","軟件授權"]
+            asset_names = ["桌上電腦","筆記本電腦","投影儀","打印機","掃描儀","空調機","風扇","白板","書桌","椅子","書櫃","儲物櫃","鋼琴","小提琴","籃球架","羽毛球網","實驗顯微鏡","滅火器","擴音器","數碼相機"]
+
+            # 生成 45 名额外学生（累计 50）
+            grade_map = {"一":1,"二":2,"三":3,"四":4,"五":5,"六":6}
+            for i in range(45):
+                sid = f"S270{50+i:02d}"
+                name_zh = random.choice(surnames) + random.choice(given_names)
+                cls = random.choice(classes)
+                grade_num = grade_map.get(cls[1:2], 1)
+                db.add(Student(
+                    id=f"student-{sid}", student_no=sid, name_zh=name_zh,
+                    name_en=f"{name_zh} (Student)", class_name=cls,
+                    status=random.choice(["active","active","active","active","suspended","graduated"]),
+                    admission_date=date.fromisoformat(f"{2026-grade_num+1}-09-01"),
+                    parent_name=f"{surnames[i%len(surnames)]}先生",
+                    parent_phone=f"6{random.randint(1000000,9999999)}",
+                    parent_email=f"parent.{sid}@example.edu.hk",
+                    created_by="system", updated_by="system",
+                    created_at=now, updated_at=now,
+                ))
+            print(f"  ✅ 45 名学生（累计 50）")
+
+            # 生成 96 条额外财务记录（累计 100）
+            for i in range(96):
+                is_income = i % 3 != 0  # ~2/3 收入, 1/3 支出
+                m = random.randint(1, 12)
+                d = random.randint(1, 28)
+                db.add(FinanceRecord(
+                    type="income" if is_income else "expense",
+                    date=f"2026-{m:02d}-{d:02d}",
+                    project=random.choice(income_projects if is_income else expense_projects),
+                    amount=round(random.uniform(100, 20000) if is_income else random.uniform(50, 8000), 2),
+                    payment_method=random.choice(payment_methods) if is_income else None,
+                    handler=random.choice(["陳老師","李老師","張老師","何老師","王老師","林老師"]),
+                    supplier=random.choice(["文具批發","科技服務","清潔公司","維修公司"]) if not is_income else None,
+                    status=random.choice(["confirmed","confirmed","confirmed","pending"]),
+                    created_by=1,
+                ))
+            print(f"  ✅ 96 条财务记录（累计 100）")
+
+            # 生成 196 件额外资产（累计 ~200）
+            for i in range(196):
+                cat = random.choice(categories)
+                db.add(Asset(
+                    asset_no=f"AST-{200+i+1:04d}",
+                    name=f"{random.choice(asset_names)} {random.choice(['A','B','C','Pro','Plus','Elite'])}-{random.randint(100,999)}",
+                    category=cat,
+                    location=random.choice(locations),
+                    status=random.choice(["active","active","active","active","active","maintenance","written_off"]),
+                    purchase_date=date.fromisoformat(f"{random.randint(2018,2025)}-{random.randint(1,12):02d}-{random.randint(1,28):02d}"),
+                    purchase_amount=round(random.uniform(500, 50000), 2),
+                    created_by=1,
+                ))
+            print(f"  ✅ 196 件资产（累计 ~200）")
+
+            # 额外报价单
+            quotation_count = 0
+            for i in range(10):
+                pn = random.choice(["校巴服務 2026","課本採購 2026-2027","運動會用品","IT設備升級","校園綠化工程","禮堂音響系統","實驗室安全設備"])
+                db.add(Quotation(project_name=pn, vendor=f"{random.choice(['供應商A','供應商B','供應商C','承包商X','承包商Y'])}", amount=round(random.uniform(5000, 80000), 2), is_lowest=random.choice([True, False]), is_selected=False, created_by=1))
+                quotation_count += 1
+            print(f"  ✅ {quotation_count} 条报价单")
+
         await db.commit()
-        print("\n🎉 种子数据导入完成！")
+        print(f"\n🎉 种子数据导入完成！（含批量演示数据）\n  学生: ~50 | 财务: ~100 | 资产: ~200 | 报价单: ~17")
 
 
 if __name__ == "__main__":

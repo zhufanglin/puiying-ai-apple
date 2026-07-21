@@ -86,6 +86,18 @@ BAIDU_OCR_TIMEOUT=20
 cd workers/ocr_worker && python -m pytest tests/ -v
 `
 
+## 8. 引擎选型说明
+
+当前生产环境使用**百度智能云 OCR** 作为主引擎（`services/ocr_engine.py` 封装百度 API）。
+
+原始冲刺计划中曾规划 PaddleOCR 本地引擎，其代码骨架已在 `workers/ocr_worker/services/ocr_engine.py` 中预留（PP-OCRv6_mobile），但因以下原因当前未激活：
+
+- PaddleOCR 重依赖（PaddlePaddle ~500MB），影响容器镜像体积和冷启动速度
+- 百度云 API 在演示环境更稳定，无需 GPU/CPU 推理
+- 本地引擎适合后续私有化部署场景
+
+切换方案（V1.1）：将 `.env` 中 `OCR_ENGINE=paddleocr` 并将 `services/ocr_engine.py` 中 PaddleOCR 分支取消注释即可。模型缓存路径：`~/.paddlex/official_models/`。
+
 ---
 
-*文档版本: v1.0 · 编制日期: 2026-07-19 · 负责人: 同学 4*
+*文档版本: v1.1 · 编制日期: 2026-07-21 · 负责人: 同学 4*

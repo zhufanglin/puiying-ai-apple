@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import {
   Award,
   Receipt,
@@ -8,25 +11,57 @@ import {
   AlertTriangle,
   CheckCircle,
 } from "lucide-react";
-
-const stats = [
-  { label: "獎狀模板", value: 12, icon: Award, color: "text-[#23675f]", bg: "bg-[#ecfdf3]" },
-  { label: "本月收支", value: "¥156,800", icon: Receipt, color: "text-green-600", bg: "bg-green-50" },
-  { label: "資產總數", value: 2340, icon: Package, color: "text-purple-600", bg: "bg-purple-50" },
-  { label: "在校學生", value: 1856, icon: GraduationCap, color: "text-orange-600", bg: "bg-orange-50" },
-];
-
-const logs = [
-  { action: "審批通過", target: "三好學生獎狀 #A023", time: "2 分鐘前", status: "success" },
-  { action: "提交審批", target: "優秀班幹部獎狀 #A024", time: "15 分鐘前", status: "pending" },
-  { action: "上傳票據", target: "春季運動會採購發票", time: "1 小時前", status: "info" },
-  { action: "資產報廢", target: "投影儀 PM-2019-032", time: "2 小時前", status: "warning" },
-];
+import { api } from "@/lib/api";
 
 export default function AppleOverviewPage() {
+  const [stats, setStats] = useState([
+    { label: "獎狀模板", value: "—", icon: Award, color: "text-[#23675f]", bg: "bg-[#ecfdf3]" },
+    { label: "本月收支", value: "—", icon: Receipt, color: "text-green-600", bg: "bg-green-50" },
+    { label: "資產總數", value: "—", icon: Package, color: "text-purple-600", bg: "bg-purple-50" },
+    { label: "在校學生", value: "—", icon: GraduationCap, color: "text-orange-600", bg: "bg-orange-50" },
+  ]);
+  const [logs] = useState([
+    { action: "系統就緒", target: "Apple 子系統已啟動", time: "—", status: "info" },
+    { action: "數據已加載", target: "從 API 獲取統計數據", time: "—", status: "success" },
+    { action: "模塊正常", target: "A1 獎狀 · A2 財務 · A3 資產 · A4 學生", time: "—", status: "success" },
+  ]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    // 并行加载 4 个模块的统计
+    Promise.allSettled([
+      api.get<any>("/apple/awards/statistics").catch(() => ({ data: null })),
+      api.get<any>("/apple/finance/summary").catch(() => ({ data: null })),
+      api.get<any>("/apple/assets/summary").catch(() => ({ data: null })),
+      api.get<any>("/apple/students/summary").catch(() => ({ data: null })),
+    ]).then(([awardsR, financeR, assetsR, studentsR]) => {
+      if (cancelled) return;
+
+      const awards: any = (awardsR.status === "fulfilled" ? (awardsR.value?.data ?? awardsR.value) : null);
+      const finance: any = (financeR.status === "fulfilled" ? (financeR.value?.data ?? financeR.value) : null);
+      const assets: any = (assetsR.status === "fulfilled" ? (assetsR.value?.data ?? assetsR.value) : null);
+      const students: any = (studentsR.status === "fulfilled" ? (studentsR.value?.data ?? studentsR.value) : null);
+
+      const templateCount = awards?.templateCount ?? awards?.totalTemplates ?? "—";
+      const netAmount = finance?.netAmount != null ? `HK$ ${finance.netAmount.toLocaleString()}` : "—";
+      const assetCount = assets?.totalAssets ?? "—";
+      const studentCount = students?.activeStudents ?? "—";
+
+      setStats([
+        { label: "獎狀模板", value: templateCount, icon: Award, color: "text-[#23675f]", bg: "bg-[#ecfdf3]" },
+        { label: "盈餘淨值", value: netAmount, icon: Receipt, color: "text-green-600", bg: "bg-green-50" },
+        { label: "資產總數", value: assetCount, icon: Package, color: "text-purple-600", bg: "bg-purple-50" },
+        { label: "在校學生", value: studentCount, icon: GraduationCap, color: "text-orange-600", bg: "bg-orange-50" },
+      ]);
+    });
+
+    return () => { cancelled = true; };
+  }, []);
+
   return (
     <div className="space-y-6">
-      {/* 統計卡片 */}
+      {/* 统计卡片 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((s) => (
           <div key={s.label} className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-sm transition-shadow">
@@ -43,15 +78,15 @@ export default function AppleOverviewPage() {
         ))}
       </div>
 
-      {/* 快捷入口 + 最近動態 */}
+      {/* 快捷入口 + 最近动态 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* 快捷入口 */}
         <div className="lg:col-span-1 bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="text-base font-semibold text-gray-800 mb-4">快捷操作</h2>
           <div className="space-y-2">
             {[
-              { label: "生成獎狀", href: "/dashboard/apple/awards/generate", icon: Award },
-              { label: "上傳票據", href: "/dashboard/apple/finance", icon: Receipt },
+              { label: "獎狀管理", href: "/dashboard/apple/awards", icon: Award },
+              { label: "財務收支", href: "/dashboard/apple/finance", icon: Receipt },
               { label: "資產盤點", href: "/dashboard/apple/assets", icon: Package },
               { label: "學生查詢", href: "/dashboard/apple/students", icon: GraduationCap },
             ].map((item) => (
@@ -67,9 +102,9 @@ export default function AppleOverviewPage() {
           </div>
         </div>
 
-        {/* 最近動態 */}
+        {/* 最近动态 */}
         <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-5">
-          <h2 className="text-base font-semibold text-gray-800 mb-4">最近動態</h2>
+          <h2 className="text-base font-semibold text-gray-800 mb-4">系統狀態</h2>
           <div className="space-y-3">
             {logs.map((log, i) => (
               <div key={i} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">

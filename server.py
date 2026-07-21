@@ -1,10 +1,12 @@
+import os
 import httpx
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import Response
 
-API_PORT = 8002
-WEB_PORT = 3000
+API_PORT = int(os.environ.get("API_PORT", "8001"))
+WEB_PORT = int(os.environ.get("WEB_PORT", "3000"))
+PUBLIC_PORT = int(os.environ.get("PORT", "8888"))
 
 app = FastAPI(title="Apple Unified Entry", docs_url=None, redoc_url=None)
 client = None
@@ -39,5 +41,5 @@ async def proxy_web(path: str, request: Request):
     return Response(content=resp.content, status_code=resp.status_code, headers=dict(resp.headers))
 
 if __name__ == "__main__":
-    print(f"\nApple 子系统统一入口: http://localhost:8888\n")
-    uvicorn.run(app, host="127.0.0.1", port=8888, log_level="info")
+    print(f"\nApple 子系统统一入口: http://localhost:{PUBLIC_PORT}\n")
+    uvicorn.run(app, host="0.0.0.0", port=PUBLIC_PORT, log_level="info")
