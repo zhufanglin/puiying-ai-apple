@@ -51,17 +51,19 @@ curl -X POST http://localhost:8000/api/v1/apple/awards/scholarships/1/review \
   -H "Content-Type: application/json" \
   -d '{"status":"approved","review_comment":"符合条件，批准"}'
 """
+import asyncio
 import hashlib
 import io
+import json
 import os
 import time
 import uuid
 import zipfile
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Response
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.pagination import PageParams
@@ -441,13 +443,24 @@ async def generate_award_certificates(
 
 # ==================== 奖状状态操作 ====================
 
+@router.post("/{award_id}/publish", response_model=APIResponse[AwardOut])
+async def publish_award(
+    award_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_permission(Permissions.AWARDS_WRITE)),
+):
+    """确认奖状（草稿/已核算 -> 已确认）"""
+    obj = await svc.publish_award(db, award_id)
+    return APIResponse(data=AwardOut.model_validate(obj))
+
+
 @router.post("/{award_id}/cancel", response_model=APIResponse[AwardOut])
 async def cancel_award(
     award_id: int,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(require_permission(Permissions.AWARDS_WRITE)),
 ):
-    """取消獎狀（僅草稿/已核算 -> 已取消，已確認的獎狀不可取消）"""
+    """取消奖状（任何状态 -> 已取消）"""
     obj = await svc.cancel_award(db, award_id)
     return APIResponse(data=AwardOut.model_validate(obj))
 
@@ -496,20 +509,19 @@ async def batch_generate(
     if not template:
         raise_error(*NOT_FOUND, detail={"template_id": body.template_id})
 
-    # 2. 创建奖状（草稿状态，需核算后确认）
+    # 2. 创建奖状（已发布状态）
     parsed_date = date.fromisoformat(body.issue_date)
     award_data = {
         "template_id": body.template_id,
         "title": template.name,
         "issue_date": parsed_date,
-        "issuer": body.issuer,
-        "status": "draft",
+        "issuer": None,
+        "status": "confirmed",
+        "total_recipients": len(body.recipients),
     }
     award = await repo.create_award(db, award_data)
 
-    # 3. 创建获奖学生（含证书编号，含重试防重复）
-    from sqlalchemy.exc import IntegrityError
-
+    # 3. 创建获奖学生（含证书编号）
     recipients_data = []
     for r in body.recipients:
         cert_no = (
@@ -522,26 +534,8 @@ async def batch_generate(
             "student_class": r.student_class,
             "certificate_no": cert_no,
         })
-
-    max_retries = 3
-    for attempt in range(max_retries):
-        try:
-            recipients = await repo.add_recipients(db, award.id, recipients_data)
-            await db.commit()
-            break
-        except IntegrityError:
-            await db.rollback()
-            if attempt == max_retries - 1:
-                raise_error(500, "證書編號生成失敗，請重試")
-            # 重新生成所有证书编号后重试
-            import time as _time
-            _time.sleep(0.1 * (attempt + 1))
-            for rd in recipients_data:
-                rd["certificate_no"] = (
-                    f"CERT-{award.id}-"
-                    f"{body.issue_date.replace('-', '')}-"
-                    f"{uuid.uuid4().hex[:6].upper()}"
-                )
+    recipients = await repo.add_recipients(db, award.id, recipients_data)
+    await db.commit()
 
     # 4. 生成证书文件
     files = []
@@ -572,25 +566,18 @@ async def batch_generate(
     ))
 
 
-# ==================== 证书下载 ====================
+# ==================== 导出 ZIP 下载 ====================
 
 @router.get("/download/{filename}")
-async def download_certificate(
-    filename: str,
-    user: User = Depends(require_permission(Permissions.AWARDS_READ)),
-):
-    """下载已生成的证书文件"""
-    # 限制路径穿越
-    safe_name = Path(filename).name
-    file_path = Path(__file__).parent / "templates" / "generated" / safe_name
-
+async def download_export_zip(filename: str):
+    """下载已生成的批量导出 ZIP 文件"""
+    file_path = Path(__file__).parent / "templates" / "generated" / filename
     if not file_path.exists():
-        raise_error(*NOT_FOUND, detail={"filename": filename})
-
+        raise_error(NOT_FOUND, "文件不存在或已過期")
     return FileResponse(
-        path=str(file_path.resolve()),
-        filename=safe_name,
-        media_type="application/pdf",
+        path=str(file_path),
+        filename=filename,
+        media_type="application/zip",
     )
 
 
@@ -670,7 +657,90 @@ async def generate_scholarship_certificate(
     )
 
 
-# ==================== 批量导出证书 ZIP ====================
+# ==================== 批量导出证书 ZIP (SSE 进度) ====================
+
+@router.post("/stream-export")
+async def batch_export_stream(
+    body: BatchExportRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_permission(Permissions.AWARDS_READ)),
+):
+    """批量导出奖状证书 ZIP，通过 SSE 实时推送进度"""
+    generated_dir = Path(__file__).parent / "templates" / "generated"
+    generated_dir.mkdir(parents=True, exist_ok=True)
+
+    # ── 先计算总数 ──
+    total = 0
+    award_map = {}
+    for award_id in body.ids:
+        award = await repo.get_award(db, award_id)
+        if award and award.recipients:
+            award_map[award_id] = award
+            total += len(award.recipients)
+
+    async def event_stream():
+        yield f"data: {json.dumps({'type': 'start', 'total': total})}\n\n"
+        await asyncio.sleep(0.01)
+
+        if total == 0:
+            yield f"data: {json.dumps({'type': 'error', 'msg': '沒有找到可導出的證書'})}\n\n"
+            return
+
+        buf = io.BytesIO()
+        generated = 0
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+            for award_id in body.ids:
+                award = award_map.get(award_id)
+                if not award:
+                    continue
+
+                template_name = award.template.name if award.template else award.title
+                issue_date_str = str(award.issue_date)[:10] if award.issue_date else ""
+
+                for recipient in award.recipients:
+                    cert_data = {
+                        "student_name": recipient.student_name,
+                        "student_class": recipient.student_class,
+                        "award_year": issue_date_str[:4] if issue_date_str else "",
+                        "award_title": template_name,
+                        "issue_date": issue_date_str,
+                    }
+                    abs_path = generate_certificate(cert_data)
+                    folder = template_name.replace("/", "_")
+                    name_in_zip = (
+                        f"{folder}/"
+                        f"{recipient.student_name}_{recipient.student_class}"
+                        f".pdf"
+                    )
+                    zf.write(abs_path, name_in_zip)
+                    generated += 1
+
+                    yield f"data: {json.dumps({'type': 'progress', 'current': generated, 'total': total})}\n\n"
+                    await asyncio.sleep(0.001)
+
+        buf.seek(0)
+
+        # 保存临时 ZIP 文件并返回下载链接
+        ts = datetime.now().strftime("%Y%m%d%H%M%S")
+        zip_name = f"certificates_{ts}.zip"
+        zip_path = generated_dir / zip_name
+        zip_path.write_bytes(buf.getvalue())
+
+        download_url = f"/api/v1/apple/awards/download/{zip_name}"
+        yield f"data: {json.dumps({'type': 'complete', 'download_url': download_url, 'count': generated})}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+# ==================== 批量导出证书 ZIP (传统) ====================
 
 @router.post("/batch-export")
 async def batch_export_certificates(
@@ -741,7 +811,7 @@ async def batch_export_scholarship_certificates(
             if not app or app.status != "approved":
                 continue
 
-            issue_date_str = str(app.review_date or app.application_date or "")
+            issue_date_str = str(app.review_date or app.application_date or "")[:10]
             cert_data = {
                 "student_name": app.student_name,
                 "student_class": app.student_class,
@@ -766,4 +836,69 @@ async def batch_export_scholarship_certificates(
         content=buf.getvalue(),
         headers={"Content-Disposition": "attachment; filename=scholarships.zip"},
         media_type="application/zip",
+    )
+
+
+@router.post("/scholarships/stream-export")
+async def batch_export_scholarships_stream(
+    body: BatchExportRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_permission(Permissions.AWARDS_READ)),
+):
+    """批量导出奖学金证书 ZIP，SSE 实时推送进度"""
+    generated_dir = Path(__file__).parent / "templates" / "generated"
+    generated_dir.mkdir(parents=True, exist_ok=True)
+
+    # 先计算总数
+    total = 0
+    apps_list = []
+    for app_id in body.ids:
+        app = await repo.get_scholarship_application(db, app_id)
+        if app and app.status == "approved":
+            apps_list.append(app)
+            total += 1
+
+    async def event_stream():
+        yield f"data: {json.dumps({'type': 'start', 'total': total})}\n\n"
+        await asyncio.sleep(0.01)
+
+        if total == 0:
+            yield f"data: {json.dumps({'type': 'error', 'msg': '沒有找到可導出的證書（僅已通過的申請可導出）'})}\n\n"
+            return
+
+        buf = io.BytesIO()
+        generated = 0
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+            for app in apps_list:
+                issue_date_str = str(app.review_date or app.application_date or "")[:10]
+                cert_data = {
+                    "student_name": app.student_name,
+                    "student_class": app.student_class,
+                    "award_year": app.academic_year or "",
+                    "award_title": f"獎學金 - {app.scholarship_type}",
+                    "issue_date": issue_date_str,
+                }
+                abs_path = generate_certificate(cert_data)
+                name_in_zip = f"獎學金/{app.student_name}_{app.scholarship_type}.pdf"
+                zf.write(abs_path, name_in_zip)
+                generated += 1
+                yield f"data: {json.dumps({'type': 'progress', 'current': generated, 'total': total})}\n\n"
+                await asyncio.sleep(0.001)
+
+        buf.seek(0)
+        ts = datetime.now().strftime("%Y%m%d%H%M%S")
+        zip_name = f"scholarships_{ts}.zip"
+        zip_path = generated_dir / zip_name
+        zip_path.write_bytes(buf.getvalue())
+        download_url = f"/api/v1/apple/awards/download/{zip_name}"
+        yield f"data: {json.dumps({'type': 'complete', 'download_url': download_url, 'count': generated})}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )

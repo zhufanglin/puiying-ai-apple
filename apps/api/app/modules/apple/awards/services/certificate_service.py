@@ -27,22 +27,6 @@ def _build_filename(data: dict, ext: str) -> str:
     return f"{safe_name}_{ts}.{ext}"
 
 
-def _format_date(raw: str) -> str:
-    """将日期字符串统一格式化为 YYYY-MM-DD，去掉时间部分"""
-    if not raw:
-        return ""
-    # 尝试多种常见格式
-    for fmt in ["%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"]:
-        try:
-            return datetime.strptime(raw[:19] if len(raw) >= 19 else raw, fmt).strftime("%Y-%m-%d")
-        except ValueError:
-            continue
-    # 兜底：尝试直接取前10位
-    if len(raw) >= 10 and raw[4] == "-" and raw[7] == "-":
-        return raw[:10]
-    return raw
-
-
 # ===================================================================
 #  公共接口
 # ===================================================================
@@ -146,11 +130,25 @@ def _generate_pdf_fallback(data: dict, output_path: Path) -> None:
     pdf.set_fill_color(248, 250, 245)  # 浅绿色背景
     pdf.rect(15, 15, 267, 180, "F")
 
+    PAGE_W = 297  # A4 横向宽度(mm)
+
+    # ── 居中文本（用 cell() + 精确宽度，保持 origin 的 cell 推进语义）──
+    def _center_text(text, h_mm, w=PAGE_W):
+        fs_mm = pdf.font_size  # 字号 (mm)
+        cn_n = sum(1 for c in text if ord(c) > 127)
+        en_n = len(text) - cn_n
+        # SimHei: CJK = 1.0 × fs_mm, ASCII = 0.5 × fs_mm
+        width_mm = cn_n * fs_mm + en_n * fs_mm * 0.5
+        x_mm = (w - width_mm) / 2
+        pdf.set_xy(x_mm, pdf.get_y())
+        # 居中：cell 精确宽度 + align="C" 消除微偏移
+        pdf.cell(width_mm, h_mm, text, align="C", new_x="LMARGIN", new_y="NEXT")
+
     # ── 学校名称 ──
-    pdf.set_xy(0, 28)
+    pdf.set_y(28)
     pdf.set_font(FONT_CN, "B", 26)
     pdf.set_text_color(26, 92, 42)
-    pdf.cell(297, 14, "培 英 中 學", align="C", new_x="LMARGIN", new_y="NEXT")
+    _center_text("培 英 中 學", 14)
 
     # ── 装饰线 ──
     pdf.set_draw_color(45, 138, 78)
@@ -159,23 +157,23 @@ def _generate_pdf_fallback(data: dict, output_path: Path) -> None:
     pdf.line(50, y_line, 247, y_line)
 
     # ── 荣誉奖状 ──
-    pdf.set_xy(0, 48)
+    pdf.set_y(48)
     pdf.set_font(FONT_CN, "B", 32)
     pdf.set_text_color(184, 134, 11)  # 金色
-    pdf.cell(297, 14, "榮 譽 獎 狀", align="C", new_x="LMARGIN", new_y="NEXT")
+    _center_text("榮 譽 獎 狀", 14)
 
     # ── 学生姓名 ──
     pdf.ln(12)
     pdf.set_font(FONT_CN, "B", 40)
     pdf.set_text_color(26, 58, 92)  # 深蓝
     sn = data.get("student_name") or ""
-    pdf.cell(297, 18, sn, align="C", new_x="LMARGIN", new_y="NEXT")
+    _center_text(sn, 18)
 
     pdf.set_font(FONT_CN, "", 14)
     pdf.set_text_color(85, 85, 85)
     sc = data.get("student_class") or ""
     pdf.ln(2)
-    pdf.cell(297, 8, sc, align="C", new_x="LMARGIN", new_y="NEXT")
+    _center_text(sc, 8)
 
     # ── 正文 ──
     pdf.ln(8)
@@ -193,14 +191,15 @@ def _generate_pdf_fallback(data: dict, output_path: Path) -> None:
     pdf.ln(18)
     pdf.set_font(FONT_CN, "", 10)
     pdf.set_text_color(102, 102, 102)
-    idate = _format_date(data.get("issue_date") or "")
-    pdf.cell(297, 6, f"頒 發 日 期：{idate}", align="C")
+    idate = data.get("issue_date") or ""
+    date_text = f"頒 發 日 期：{idate}"
+    _center_text(date_text, 6)
 
     # ── 底部水印装饰文字 ──
     pdf.set_font(FONT_CN, "", 40)
     pdf.set_text_color(220, 230, 220)  # 极浅绿色水印
-    pdf.set_xy(0, 140)
-    pdf.cell(297, 20, "PUI YING SECONDARY SCHOOL", align="C")
+    pdf.set_y(140)
+    _center_text("PUI YING SECONDARY SCHOOL", 20)
 
     # ── 保存 ──
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -213,7 +212,7 @@ def _render_certificate_html(data: dict) -> str:
     sc = data["student_class"]
     ay = data["award_year"]
     at = data["award_title"]
-    idate = _format_date(data["issue_date"])
+    idate = data["issue_date"]
 
     return f"""<!DOCTYPE html>
 <html lang="zh-Hant">
