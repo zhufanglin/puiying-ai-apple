@@ -52,10 +52,14 @@ export default function ScholarshipsListPage() {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const toggleSelect = (id: number) => {
+    // 只有 approved 的可以勾选导出
+    const item = data.find((d) => d.id === id);
+    if (!item || item.status !== "approved") return;
     const next = new Set(selectedIds);
     if (next.has(id)) next.delete(id); else next.add(id);
     setSelectedIds(next);
-    setSelectAll(next.size === data.length && data.length > 0);
+    const approved = data.filter((d) => d.status === "approved");
+    setSelectAll(next.size === approved.length && approved.length > 0);
   };
 
   const toggleSelectAll = () => {
@@ -63,7 +67,8 @@ export default function ScholarshipsListPage() {
       setSelectedIds(new Set());
       setSelectAll(false);
     } else {
-      setSelectedIds(new Set(data.map((d) => d.id)));
+      const approved = data.filter((d) => d.status === "approved");
+      setSelectedIds(new Set(approved.map((d) => d.id)));
       setSelectAll(true);
     }
   };
@@ -73,9 +78,20 @@ export default function ScholarshipsListPage() {
       alert("請先勾選需要導出的獎學金申請");
       return;
     }
+    // 雙重保險：只導出已審批通過的
+    const approvedIds = Array.from(selectedIds).filter(
+      (id) => data.find((d) => d.id === id)?.status === "approved"
+    );
+    if (approvedIds.length < selectedIds.size) {
+      alert(`僅已審批通過的申請可導出（${selectedIds.size - approvedIds.length} 項非 approved 已跳過）`);
+    }
+    if (approvedIds.length === 0) {
+      alert("沒有已審批通過的申請可導出");
+      return;
+    }
     setExporting(true);
     try {
-      await awardApi.batchExportScholarships(Array.from(selectedIds));
+      await awardApi.batchExportScholarships(approvedIds);
       setSelectedIds(new Set());
       setSelectAll(false);
     } catch (e: any) {
@@ -103,9 +119,10 @@ export default function ScholarshipsListPage() {
         <input
           type="checkbox"
           checked={selectedIds.has(row.id)}
+          disabled={row.status !== "approved"}
           onChange={() => toggleSelect(row.id)}
           onClick={(e) => e.stopPropagation()}
-          className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+          className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 disabled:opacity-30 disabled:cursor-not-allowed"
         />
       ),
     },

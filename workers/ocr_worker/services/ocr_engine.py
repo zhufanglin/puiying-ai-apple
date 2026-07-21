@@ -8,6 +8,11 @@ from __future__ import annotations
 import base64
 import json
 import os
+
+# 必须在 PaddleOCR / PaddleX import 之前设置，防止 Windows MKL/OpenMP 冲突导致 Segfault
+os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+os.environ.setdefault("FLAGS_use_mkldnn", "0")
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -221,18 +226,19 @@ class PaddleOcrBackend:
 
         lang = os.getenv("PADDLE_OCR_LANG", "ch")
         try:
-            # PaddleOCR 3.x：use_textline_orientation 替代 use_angle_cls，移除 show_log
+            # PaddleOCR 3.x：Windows 上 PP-LCNet 方向分类模型会 Segfault → 关闭
+            # 正拍发票不影响，严重倾斜图片建议手动校正后上传
             self.client = PaddleOCR(
-                use_textline_orientation=True, lang=lang, enable_mkldnn=False
+                use_textline_orientation=False, lang=lang, enable_mkldnn=False
             )
         except TypeError:
             try:
                 # PaddleOCR 2.x 兼容回退
                 self.client = PaddleOCR(
-                    use_angle_cls=True, lang=lang, show_log=False, enable_mkldnn=False
+                    use_angle_cls=False, lang=lang, show_log=False, enable_mkldnn=False
                 )
             except TypeError:
-                self.client = PaddleOCR(use_angle_cls=True, lang=lang, show_log=False)
+                self.client = PaddleOCR(use_angle_cls=False, lang=lang, show_log=False)
 
     def extract(self, path: Path) -> OcrResult:
         try:

@@ -1,6 +1,10 @@
 """FastAPI 应用入口"""
 from contextlib import asynccontextmanager
 
+from dotenv import load_dotenv
+
+load_dotenv()  # 加载 .env 到 os.environ（OCR 配置依赖此步骤）
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 

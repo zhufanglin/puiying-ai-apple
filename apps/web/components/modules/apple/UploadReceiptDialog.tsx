@@ -125,7 +125,6 @@ export default function UploadReceiptDialog({ open, onClose, onConfirm }: Props)
     setUploading(true);
     setError(null);
     setProgress(0);
-    setStatusText("PaddleOCR 識別中...");
 
     try {
       // 1. OCR 識別
@@ -134,6 +133,7 @@ export default function UploadReceiptDialog({ open, onClose, onConfirm }: Props)
         jobType: "receipt",
         language: "chi_sim+eng",
         onProgress: (pct) => setProgress(Math.round(pct * 100)),
+        onStatus: setStatusText,
       });
 
       // 2. 優先用 AI Prompt 做語義結構化；失敗時採用保守的 Worker / 本地規則。

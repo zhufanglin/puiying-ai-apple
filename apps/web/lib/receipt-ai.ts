@@ -30,7 +30,7 @@ interface ReceiptAIResponse {
 const STORAGE_KEY = "apple.receiptAiConfig.v1";
 
 export const DEFAULT_RECEIPT_AI_CONFIG: ReceiptAIConfig = {
-  mode: "deepseek",
+  mode: "local",
   model: "deepseek-v4-flash",
   apiKey: "",
 };

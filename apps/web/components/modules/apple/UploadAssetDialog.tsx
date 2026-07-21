@@ -94,7 +94,6 @@ export default function UploadAssetDialog({ open, onClose, onConfirm }: Props) {
     setUploading(true);
     setError(null);
     setProgress(0);
-    setStatusText("百度 OCR 識別中...");
     const requestId = ++uploadRequestRef.current;
 
     try {
@@ -108,6 +107,7 @@ export default function UploadAssetDialog({ open, onClose, onConfirm }: Props) {
             setProgress(Math.round(pct * 100));
           }
         },
+        onStatus: setStatusText,
       });
       if (requestId !== uploadRequestRef.current) return;
 

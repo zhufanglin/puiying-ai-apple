@@ -172,18 +172,58 @@ export async function recognizeWithServerFallback(
     jobType: OcrJobType;
     language?: string;
     onProgress?: (progress: number) => void;
+    onStatus?: (status: string) => void;
   },
 ): Promise<ServerOcrResult> {
+  const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
   // 1) 优先使用后端 PaddleOCR（高性能本地引擎，无需 API key）
+  options.onStatus?.("PaddleOCR 本地识别中...");
   try {
     options.onProgress?.(0.1);
     const ocr = await recognizeWithPaddle(file, options.onProgress);
     return { ocr, fileId: null, engine: "paddleocr" };
   } catch (_paddleError) {
-    // PaddleOCR 不可用，回退浏览器 Tesseract.js
+    // PaddleOCR 不可用（Windows 上可能 Segfault），继续下一级
   }
 
-  // 2) 回退浏览器 Tesseract.js（离线兜底）
+  // 2) 百度 OCR 同步端点（无需 Redis/Celery，直连百度 API）
+  options.onStatus?.("PaddleOCR 失败，改用百度 OCR 线上识别...");
+  try {
+    options.onProgress?.(0.1);
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch(`${BASE}/api/v1/ocr/baidu-recognize`, {
+      method: "POST",
+      body: form,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || "百度 OCR 不可用");
+    }
+    options.onProgress?.(0.9);
+    const data = await res.json();
+    return {
+      ocr: {
+        text: data.text || "",
+        confidence: data.confidence || 0,
+        engine: "baidu_ocr",
+        lines: (Array.isArray(data.lines) ? data.lines : []).map(
+          (l: { text: string; confidence: number }) => ({
+            text: l.text,
+            confidence: l.confidence,
+          })
+        ),
+      } as OcrResult,
+      fileId: null,
+      engine: "baidu_ocr",
+    };
+  } catch (_baiduError) {
+    // 百度 OCR 不可用（key 未配或网络不通），继续兜底
+  }
+
+  // 3) 最后兜底浏览器 Tesseract.js（离线，精度最低）
+  options.onStatus?.("PaddleOCR 和百度 OCR 均失败，改用浏览器 Tesseract 离线识别...");
   options.onProgress?.(0);
   const ocr = await recognizeImage(file, {
     language: options.language,
@@ -193,6 +233,6 @@ export async function recognizeWithServerFallback(
     ocr,
     fileId: null,
     engine: "tesseract_js",
-    fallbackReason: "PaddleOCR 后端不可用，已回退浏览器引擎",
+    fallbackReason: "PaddleOCR 和百度 OCR 均不可用，已回退浏览器引擎",
   };
 }

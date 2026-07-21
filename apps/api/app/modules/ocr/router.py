@@ -1,7 +1,12 @@
 """OCR 异步任务路由。"""
 
+import os
 import sys
 from pathlib import Path
+
+# 必须在 PaddleOCR import 之前设置，防止 Windows MKL/OpenMP 冲突导致 Segfault
+os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
+os.environ.setdefault("OMP_NUM_THREADS", "1")
 
 from fastapi import APIRouter, Depends, Header, HTTPException, UploadFile, File, status
 from sqlalchemy import select
@@ -30,13 +35,16 @@ _worker_root = Path(__file__).resolve().parents[5] / "workers" / "ocr_worker" / 
 if str(_worker_root) not in sys.path:
     sys.path.insert(0, str(_worker_root))
 
-# 在模块加载时预加载 PaddleOCR，避免 HTTP 请求时首次加载导致进程崩溃
+# 模块加载时只导入类定义，不实例化 PaddleOCR（避免启动时 Segfault 导致后端崩溃）
+# PaddleOCR 的实际初始化延迟到首次 OCR 请求时（懒加载）
 _paddle_backend = None
+_paddle_load_error = None
 try:
     from ocr_engine import PaddleOcrBackend
-    _paddle_backend = PaddleOcrBackend()
-    print("[OCR] PaddleOCR backend loaded successfully")
+    # 不在此处实例化：PaddleOcrBackend() 会触发 PP-LCNet 模型加载，Windows 上 PaddleX 3.7.2 会 Segfault
+    print("[OCR] PaddleOcrBackend class imported (lazy init)")
 except Exception as _e:
+    _paddle_load_error = str(_e)
     print(f"[OCR] PaddleOCR backend NOT available: {_e}")
 
 router = APIRouter()
@@ -142,6 +150,7 @@ async def paddle_recognize(
     file: UploadFile = File(),
 ):
     """PaddleOCR 本地同步识别（无需 API key，无需 AI）。"""
+    global _paddle_backend
     import tempfile
     from PIL import Image
 
@@ -169,7 +178,10 @@ async def paddle_recognize(
         img.close()  # 释放文件句柄，Windows 下必须关闭
 
         if _paddle_backend is None:
-            raise RuntimeError("PaddleOCR 后端未加载")
+            try:
+                _paddle_backend = PaddleOcrBackend()
+            except Exception as e:
+                raise RuntimeError(f"PaddleOCR 初始化失败：{e}")
         result = _paddle_backend.extract(Path(tmp_path))
         return {
             "text": result.text,
@@ -185,5 +197,45 @@ async def paddle_recognize(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"PaddleOCR 识别失败：{e}")
+    finally:
+        Path(tmp_path).unlink(missing_ok=True)
+
+
+@router.post("/baidu-recognize")
+async def baidu_recognize(
+    file: UploadFile = File(),
+):
+    """百度 OCR 同步识别（无需 Redis/Celery，直连百度 API）。"""
+    import tempfile
+    from PIL import Image
+    from ocr_engine import BaiduOcrBackend, OcrResult
+
+    suffix = Path(file.filename or "image.png").suffix or ".png"
+    try:
+        contents = await file.read()
+    except Exception:
+        raise HTTPException(status_code=400, detail="无法读取上传文件")
+
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+        tmp.write(contents)
+        tmp_path = tmp.name
+
+    try:
+        backend = BaiduOcrBackend()
+        result: OcrResult = backend.extract(Path(tmp_path))
+        return {
+            "text": result.text,
+            "confidence": result.confidence,
+            "engine": result.engine,
+            "lines": [
+                {"text": t, "confidence": c}
+                for t, c in zip(
+                    result.text.split("\n"),
+                    [result.confidence] * len(result.text.split("\n")),
+                )
+            ] if result.text else [],
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"百度OCR 识别失败：{e}")
     finally:
         Path(tmp_path).unlink(missing_ok=True)

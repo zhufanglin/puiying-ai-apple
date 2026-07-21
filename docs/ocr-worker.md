@@ -8,6 +8,13 @@
 
 OCR 链路用于财务收据、资产发票、奖状证书和普通文档识别。主引擎为**百度智能云 OCR**；浏览器端 Tesseract.js 仅在 API、Redis、Worker 或百度服务不可用时自动回退。
 
+> **补充（2026-07-21）**：PaddleOCR 本地引擎在 Windows 上因 PaddleX 3.7.2 的 PP-LCNet 模型存在 Segfault 兼容性问题，无法正常初始化。当前前端降级链路调整为：
+> 1. PaddleOCR（后端 `/api/v1/ocr/recognize`，Windows 上返回 500）
+> 2. 百度 OCR 同步端点（后端 `/api/v1/ocr/baidu-recognize`，直连百度 API，不依赖 Redis/Celery）
+> 3. 浏览器 Tesseract.js（仅在前两级均失败时兜底）
+>
+> 部署到 Linux（Render）后 PaddleOCR 可正常使用，同步通路自然回到首选。
+
 ## 2. 架构
 
 `
