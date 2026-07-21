@@ -104,9 +104,6 @@ class AwardRecipient(Base, TimestampMixin):
     rank: Mapped[Optional[str]] = mapped_column(
         String(20), comment="获奖等级: 一等奖 / 二等奖 / 三等奖 / 优秀奖"
     )
-    scholarship_amount: Mapped[Optional[Decimal]] = mapped_column(
-        Numeric(10, 2), nullable=True, default=None, comment="核算后的奖学金金额（HKD）"
-    )
 
     # 正向关系
     award: Mapped["Award"] = relationship(back_populates="recipients")

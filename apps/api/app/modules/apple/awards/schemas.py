@@ -8,7 +8,7 @@
 """
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Optional, Literal
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -113,7 +113,6 @@ class AwardRecipientOut(BaseModel):
     certificate_no: Optional[str] = None
     reason: Optional[str] = None
     rank: Optional[str] = None
-    scholarship_amount: Optional[Decimal] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -181,7 +180,7 @@ class ScholarshipApplicationQuery(PageParams):
 
 class ScholarshipReviewCreate(BaseModel):
     """审核奖学金申请"""
-    status: Literal["approved", "rejected"] = Field(..., description="审核结果: approved / rejected")
+    status: str = Field(..., description="审核结果: approved / rejected")
     review_comment: Optional[str] = Field(None, description="审核意见")
 
 
@@ -243,7 +242,6 @@ class BatchGenerateRequest(BaseModel):
     recipients: list[BatchGenerateRecipient] = Field(..., min_length=1, description="获奖学生列表")
     issue_date: str = Field(..., description="颁发日期, 如: 2026-07-17")
     award_year: str = Field(..., description="学年, 如: 2025-2026")
-    issuer: Optional[str] = Field(None, max_length=100, description="颁发部门")
 
 
 class BatchGenerateFileInfo(BaseModel):

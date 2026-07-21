@@ -6,7 +6,7 @@
 from datetime import date
 from typing import Optional
 
-from sqlalchemy import select, func, delete as sa_delete, Select, update as sa_update
+from sqlalchemy import select, func, delete as sa_delete, Select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -74,14 +74,6 @@ async def delete_template(db: AsyncSession, template_id: int) -> bool:
     obj = await get_template(db, template_id)
     if not obj:
         return False
-    # 检查是否有奖状关联此模板
-    count_result = await db.execute(
-        select(func.count()).select_from(Award).where(Award.template_id == template_id)
-    )
-    count = count_result.scalar() or 0
-    if count > 0:
-        from app.common.errors import raise_error, BUSINESS_ERROR
-        raise_error(*BUSINESS_ERROR, detail={"message": f"無法刪除模板：有 {count} 份獎狀正在使用此模板"})
     await db.delete(obj)
     await db.flush()
     return True
@@ -172,13 +164,18 @@ async def add_recipients(db: AsyncSession, award_id: int, recipients_data: list[
     db.add_all(objs)
     await db.flush()
 
-    # 原子递增 total_recipients（避免竞态）
-    await db.execute(
-        sa_update(Award)
-        .where(Award.id == award_id)
-        .values(total_recipients=Award.total_recipients + len(objs))
+    # 更新奖状的获奖人数
+    count_result = await db.execute(
+        select(func.count()).select_from(AwardRecipient).where(
+            AwardRecipient.award_id == award_id
+        )
     )
-    await db.flush()
+    count = count_result.scalar() or 0
+    award = await db.execute(select(Award).where(Award.id == award_id))
+    award = award.scalar_one_or_none()
+    if award:
+        award.total_recipients = count
+        await db.flush()
 
     return objs
 
@@ -199,12 +196,6 @@ async def remove_recipient(db: AsyncSession, recipient_id: int) -> bool:
     obj = obj.scalar_one_or_none()
     if not obj:
         return False
-    # 原子递减 total_recipients（避免竞态）
-    await db.execute(
-        sa_update(Award)
-        .where(Award.id == obj.award_id, Award.total_recipients > 0)
-        .values(total_recipients=Award.total_recipients - 1)
-    )
     await db.delete(obj)
     await db.flush()
     return True

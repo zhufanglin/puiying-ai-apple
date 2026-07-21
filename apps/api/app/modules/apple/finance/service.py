@@ -41,7 +41,7 @@ async def create_income(db: AsyncSession, data: dict, user_id: int) -> FinanceRe
         action="create",
         module="finance",
         entity_type="income",
-        entity_id=str(record.id),
+        entity_id=record.id,
     )
     db.add(log)
 
@@ -60,7 +60,7 @@ async def create_expense(db: AsyncSession, data: dict, user_id: int) -> FinanceR
         action="create",
         module="finance",
         entity_type="expense",
-        entity_id=str(record.id),
+        entity_id=record.id,
     )
     db.add(log)
 

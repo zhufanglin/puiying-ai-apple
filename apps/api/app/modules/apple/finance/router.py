@@ -116,7 +116,7 @@ async def update_income(
 
     # 审计日志
     db.add(AuditLog(user_id=user.id, action="update", module="finance",
-                    entity_type="income", entity_id=str(record.id)))
+                    entity_type="income", entity_id=record.id))
     await db.flush()
     return APIResponse(data=record)
 
@@ -134,7 +134,7 @@ async def delete_income(
     await repository.delete_record(db, record)
 
     db.add(AuditLog(user_id=user.id, action="delete", module="finance",
-                    entity_type="income", entity_id=str(record_id)))
+                    entity_type="income", entity_id=record_id))
     await db.flush()
     return APIResponse(message="已删除")
 
@@ -202,7 +202,7 @@ async def update_expense(
     record = await repository.update_record(db, record, data)
 
     db.add(AuditLog(user_id=user.id, action="update", module="finance",
-                    entity_type="expense", entity_id=str(record.id)))
+                    entity_type="expense", entity_id=record.id))
     await db.flush()
     return APIResponse(data=record)
 
@@ -220,7 +220,7 @@ async def delete_expense(
     await repository.delete_record(db, record)
 
     db.add(AuditLog(user_id=user.id, action="delete", module="finance",
-                    entity_type="expense", entity_id=str(record_id)))
+                    entity_type="expense", entity_id=record_id))
     await db.flush()
     return APIResponse(message="已删除")
 
@@ -257,7 +257,7 @@ async def create_quotation(
     q = await repository.create_quotation(db, data, user.id)
 
     db.add(AuditLog(user_id=user.id, action="create", module="finance",
-                    entity_type="quotation", entity_id=str(q.id)))
+                    entity_type="quotation", entity_id=q.id))
     await db.flush()
     return APIResponse(data=q)
 

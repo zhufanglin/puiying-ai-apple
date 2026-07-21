@@ -229,10 +229,10 @@ class TestAwardStatus:
         assert resp.status_code == 200
         data = resp.json()
         assert data["code"] == 0
-        assert data["data"]["status"] == "confirmed"
+        assert data["data"]["status"] == "published"
 
     def test_02_cancel_published_award(self):
-        """取消已发布的奖状（confirmed -> cancelled）"""
+        """取消已发布的奖状（published -> cancelled）"""
         resp = client.post(
             f"{API_PREFIX}/apple/awards/{TestAwardStatus._award_id}/cancel",
             headers=auth_headers(self._token),

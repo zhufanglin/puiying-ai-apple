@@ -13,7 +13,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.errors import raise_error, NOT_FOUND, BUSINESS_ERROR
 from app.modules.apple.awards import repository as repo
-from app.modules.apple.awards.models import ScholarshipReview
 from app.modules.apple.awards.schemas import (
     AwardStatistics, ScholarshipStatistics,
     CalculateResult, CalculateResultItem,
@@ -111,6 +110,7 @@ async def create_award(db: AsyncSession, data: dict):
     if "issue_date" not in data or data["issue_date"] is None:
         data["issue_date"] = date.today()
     data["status"] = data.get("status", "draft")
+    data["total_recipients"] = len(recipients_data)
 
     # 创建奖状
     award = await repo.create_award(db, data)
@@ -158,15 +158,26 @@ async def batch_delete_awards(db: AsyncSession, award_ids: list[int]) -> dict:
     return {"deleted_count": deleted, "total": len(award_ids)}
 
 
-async def cancel_award(db: AsyncSession, award_id: int):
-    """取消奖状（仅 draft/calculated -> cancelled，已確認不可取消）"""
+async def publish_award(db: AsyncSession, award_id: int):
+    """确认奖状（draft/calculated -> confirmed）"""
     award = await repo.get_award(db, award_id)
     if not award:
         raise_error(*NOT_FOUND, detail={"id": award_id})
     if award.status not in ("draft", "calculated"):
-        raise_error(*BUSINESS_ERROR, detail={
-            "message": f"當前狀態為 {award.status}，已確認的獎狀不可取消"
-        })
+        raise_error(*BUSINESS_ERROR, detail={"message": f"当前状态为 {award.status}，无法确认"})
+    award.status = "confirmed"
+    await db.flush()
+    await db.refresh(award)
+    return award
+
+
+async def cancel_award(db: AsyncSession, award_id: int):
+    """取消奖状（draft/calculated/confirmed -> cancelled）"""
+    award = await repo.get_award(db, award_id)
+    if not award:
+        raise_error(*NOT_FOUND, detail={"id": award_id})
+    if award.status == "cancelled":
+        raise_error(*BUSINESS_ERROR, detail={"message": "奖状已取消，无需重复操作"})
     award.status = "cancelled"
     await db.flush()
     await db.refresh(award)
@@ -176,28 +187,15 @@ async def cancel_award(db: AsyncSession, award_id: int):
 # ==================== 获奖学生 ====================
 
 async def add_recipients(db: AsyncSession, award_id: int, recipients_data: list[dict]):
-    """批量添加获奖学生（仅 draft / calculated 状态可操作）"""
+    """批量添加获奖学生"""
     award = await repo.get_award(db, award_id)
     if not award:
         raise_error(*NOT_FOUND, detail={"award_id": award_id})
-    if award.status not in ("draft", "calculated"):
-        raise_error(*BUSINESS_ERROR, detail={
-            "message": f"當前狀態為 {award.status}，不可增減獲獎學生"
-        })
     return await repo.add_recipients(db, award_id, recipients_data)
 
 
 async def remove_recipient(db: AsyncSession, recipient_id: int):
-    """删除获奖学生（仅 draft / calculated 状态可操作）"""
-    # 先查 recipient 获取 award_id
-    recipient = await repo.get_recipient(db, recipient_id)
-    if not recipient:
-        raise_error(*NOT_FOUND, detail={"recipient_id": recipient_id})
-    award = await repo.get_award(db, recipient.award_id)
-    if award and award.status not in ("draft", "calculated"):
-        raise_error(*BUSINESS_ERROR, detail={
-            "message": f"當前狀態為 {award.status}，不可增減獲獎學生"
-        })
+    """删除获奖学生"""
     ok = await repo.remove_recipient(db, recipient_id)
     if not ok:
         raise_error(*NOT_FOUND, detail={"recipient_id": recipient_id})
@@ -253,27 +251,13 @@ async def review_scholarship(
             "message": f"当前状态为 {app.status}，无法审核"
         })
 
-    now = datetime.now(timezone.utc)
     update_data = {
         "status": status,
         "reviewer_id": reviewer_id,
         "review_comment": review_comment,
-        "review_date": now,
+        "review_date": datetime.now(timezone.utc),
     }
-    result = await repo.update_scholarship_application(db, app_id, update_data)
-
-    # 写入审计记录
-    review_record = ScholarshipReview(
-        application_id=app_id,
-        reviewer_id=reviewer_id,
-        review_status=status,
-        review_comment=review_comment,
-        review_date=now,
-    )
-    db.add(review_record)
-    await db.flush()
-
-    return result
+    return await repo.update_scholarship_application(db, app_id, update_data)
 
 
 # ==================== 统计 ====================
@@ -340,11 +324,6 @@ async def calculate_scholarship(
     if not award:
         raise_error(*NOT_FOUND, detail={"award_id": award_id})
 
-    if award.status not in ("draft", "calculated"):
-        raise_error(*BUSINESS_ERROR, detail={
-            "message": f"當前狀態為 {award.status}，不可重複核算"
-        })
-
     effective_rules = _normalize_rules(rules) if rules else _DEFAULT_SCHOLARSHIP_RULES
 
     # 提取兜底默认金额（支持"默认"/"默認"关键字）
@@ -370,18 +349,13 @@ async def calculate_scholarship(
             final_amount=base,
             remark=remark,
         ))
-        # 持久化核算金额到获奖记录
-        r.scholarship_amount = base
 
     total = sum(item.final_amount for item in items)
-
-    # 同步更新奖状总额
-    award.amount = total
 
     # 核算成功后自动将状态从 draft 改为 calculated
     if award.status == "draft":
         award.status = "calculated"
-    await db.flush()
+        await db.flush()
 
     return CalculateResult(items=items, total_amount=total)
 
