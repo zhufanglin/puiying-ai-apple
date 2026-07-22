@@ -43,7 +43,7 @@ export default function AppleOverviewPage() {
       const assets: any = (assetsR.status === "fulfilled" ? (assetsR.value?.data ?? assetsR.value) : null);
       const students: any = (studentsR.status === "fulfilled" ? (studentsR.value?.data ?? studentsR.value) : null);
 
-      const templateCount = awards?.templateCount ?? awards?.totalTemplates ?? "—";
+      const templateCount = awards?.awards?.template_count ?? awards?.totalTemplates ?? "—";
       const netAmount = finance?.netAmount != null ? `HK$ ${finance.netAmount.toLocaleString()}` : "—";
       const assetCount = assets?.totalAssets ?? "—";
       const studentCount = students?.activeStudents ?? "—";
