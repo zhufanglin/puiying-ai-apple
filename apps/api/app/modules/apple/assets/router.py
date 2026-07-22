@@ -23,7 +23,10 @@ from app.core.security import get_current_user
 from app.db.session import get_db
 from app.modules.accounts.models import User
 from app.modules.audit.models import AuditLog
-from app.modules.apple.assets import repository, service
+from app.modules.apple.assets import repository
+from app.modules.apple.assets.address_label_service import print_labels
+from app.modules.apple.assets.asset_writeoff_service import writeoff_asset
+from app.modules.apple.assets.stocktake_service import stocktake_generate_report
 from app.modules.apple.assets.models import Asset
 from app.modules.apple.assets.schemas import (
     AssetCreate,
@@ -219,7 +222,7 @@ async def stocktake(
     __: User = Depends(require_permission(Permissions.ASSETS_READ)),
 ):
     """执行盘点 — 按地点分组生成盘点报告"""
-    result = await service.stocktake_generate_report(db, location=body.location)
+    result = await stocktake_generate_report(db, location=body.location)
     return APIResponse(data=result)
 
 
@@ -239,7 +242,7 @@ async def writeoff_asset(
     if not asset:
         raise_error(*NOT_FOUND)
 
-    asset = await service.writeoff_asset(db, asset, body.reason)
+    asset = await writeoff_asset(db, asset, body.reason)
     await db.flush()
     return APIResponse(data=asset)
 
@@ -255,5 +258,5 @@ async def print_labels(
     __: User = Depends(require_permission(Permissions.ASSETS_READ)),
 ):
     """批量打印资产标签"""
-    labels = await service.print_labels(db, body.asset_ids)
+    labels = await print_labels(db, body.asset_ids)
     return APIResponse(data=PrintLabelsResponse(labels=labels, generated_count=len(labels)))

@@ -195,11 +195,11 @@ class TestAssetWriteoff:
     @pytest.mark.asyncio
     async def test_writeoff_asset(self):
         """POST /assets/{id}/writeoff — 正常注销"""
-        from app.modules.apple.assets.service import writeoff_asset
+        from app.modules.apple.assets.asset_writeoff_service import writeoff_asset
 
         db = mock_db()
 
-        with patch("app.modules.apple.assets.service.repository.update_asset") as mock_update:
+        with patch("app.modules.apple.assets.asset_writeoff_service.repository.update_asset") as mock_update:
             asset = make_asset(status="active")
             mock_update.return_value = make_asset(
                 status="written_off",
@@ -215,7 +215,7 @@ class TestAssetWriteoff:
     @pytest.mark.asyncio
     async def test_writeoff_already_written_off(self):
         """POST /assets/{id}/writeoff — 重复注销应报错"""
-        from app.modules.apple.assets.service import writeoff_asset
+        from app.modules.apple.assets.asset_writeoff_service import writeoff_asset
 
         db = mock_db()
         asset = make_asset(status="written_off")
@@ -226,11 +226,11 @@ class TestAssetWriteoff:
     @pytest.mark.asyncio
     async def test_print_labels(self):
         """POST /print-labels — 批量打印标签"""
-        from app.modules.apple.assets.service import print_labels
+        from app.modules.apple.assets.address_label_service import print_labels
 
         db = mock_db()
 
-        with patch("app.modules.apple.assets.service.repository.get_asset_by_id") as mock_get:
+        with patch("app.modules.apple.assets.address_label_service.repository.get_asset_by_id") as mock_get:
             mock_get.return_value = make_asset(
                 id=1, asset_no="IT-2026-001",
                 name="Dell 桌上電腦", location="3樓教員室",
