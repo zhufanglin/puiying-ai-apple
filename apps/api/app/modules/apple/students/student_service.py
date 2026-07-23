@@ -47,6 +47,18 @@ class StudentService:
         state = self.repository.state()
         return self.repository.list_students(state, search=search, class_name=class_name, status=status)
 
+    def list_parent_phones(self, class_name: str) -> list[dict[str, str | None]]:
+        rows = self.list(class_name=class_name, status="active")
+        return [
+            {
+                "student_name": row["nameZh"],
+                "parent_name": row.get("parentName"),
+                "phone": parent_phone,
+            }
+            for row in rows
+            if (parent_phone := (row.get("parentPhone") or "").strip())
+        ]
+
     def get(self, student_id: str) -> dict[str, Any]:
         state = self.repository.state()
         student = self.repository.get_student(state, student_id)

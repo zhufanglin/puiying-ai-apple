@@ -110,3 +110,8 @@ class Permissions:
     STUDENTS_READ   = "apple:students:read"
     STUDENTS_WRITE  = "apple:students:write"
     STUDENTS_DELETE = "apple:students:delete"
+
+    # A5 通知通告
+    NOTIFICATIONS_READ  = "apple:notifications:read"
+    NOTIFICATIONS_WRITE = "apple:notifications:write"
+    NOTIFICATIONS_SEND  = "apple:notifications:send"

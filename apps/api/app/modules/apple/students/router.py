@@ -123,6 +123,12 @@ def create_student(body: StudentCreate) -> dict[str, Any]:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
+@router.get("/{class_name}/parent-phones")
+def list_parent_phones(class_name: str) -> dict[str, Any]:
+    """按班级查询家长 WhatsApp 号码列表"""
+    return response(StudentService().list_parent_phones(class_name))
+
+
 @router.get("/{student_id}")
 def get_student(student_id: str) -> dict[str, Any]:
     try:

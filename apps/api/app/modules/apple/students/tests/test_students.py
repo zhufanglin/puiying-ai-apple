@@ -47,8 +47,33 @@ class StudentServicesTest(unittest.TestCase):
     def test_list_and_summary(self) -> None:
         rows = self.students.list()
         self.assertGreaterEqual(len(rows), 3)
-        self.assertEqual(self.students.summary()["activeStudents"], 3)
-        self.assertGreaterEqual(self.students.summary()["monthlyAttendanceExceptions"], 2)
+        self.assertEqual(self.students.summary()["activeStudents"], 4)
+        self.assertGreaterEqual(self.students.summary()["monthlyAttendanceExceptions"], 1)
+
+    def test_list_parent_phones_by_class(self) -> None:
+        rows = self.students.list_parent_phones("中四A班")
+
+        source_rows = [
+            row
+            for row in self.students.list(class_name="中四A班", status="active")
+            if (row.get("parentPhone") or "").strip()
+        ]
+        self.assertEqual(len(rows), len(source_rows))
+        self.assertTrue(rows)
+        self.assertEqual(
+            rows[0],
+            {
+                "student_name": source_rows[0]["nameZh"],
+                "parent_name": source_rows[0].get("parentName"),
+                "phone": source_rows[0]["parentPhone"].strip(),
+            },
+        )
+
+    def test_parent_phone_route_is_registered(self) -> None:
+        from app.modules.apple.students.router import router
+
+        paths = {route.path for route in router.routes}
+        self.assertIn("/{class_name}/parent-phones", paths)
 
     def test_create_update_and_delete(self) -> None:
         created = self.students.create(StudentCreate(studentNo="S26999", nameZh="测试学生", nameEn="Test Student", className="3C", parentEmail="parent@example.com"))
@@ -60,42 +85,42 @@ class StudentServicesTest(unittest.TestCase):
 
     def test_duplicate_student_number_is_rejected(self) -> None:
         with self.assertRaises(StudentConflictError):
-            self.students.create(StudentCreate(studentNo="S26001", nameZh="重复", className="2A"))
+            self.students.create(StudentCreate(studentNo="STU-2024001", nameZh="重复", className="中四A班"))
 
     def test_student_excel_import_upserts_and_reports_errors(self) -> None:
         workbook = Workbook()
         sheet = workbook.active
         sheet.append(["学号", "姓名", "班级", "入学日期", "家长电邮"])
-        sheet.append(["S26001", "陈嘉怡", "2C", "2025-09-01", "parent.s26001@example.edu.hk"])
-        sheet.append(["S26998", "新同学", "1A", "2026-09-01", "new.parent@example.edu.hk"])
+        sheet.append(["STU-2024001", "陳小明", "中四A班", "2025-09-01", "parent.stu2024001@example.edu.hk"])
+        sheet.append(["STU-2024998", "新同学", "中一A班", "2026-09-01", "new.parent@example.edu.hk"])
         sheet.append(["", "缺学号", "1A", "2026-09-01", "bad@example.edu.hk"])
         stream = BytesIO(); workbook.save(stream)
         result = self.students.import_excel(stream.getvalue(), "students.xlsx")
         self.assertEqual(result["imported"], 1)
         self.assertEqual(result["updated"], 1)
         self.assertEqual(len(result["errors"]), 1)
-        self.assertEqual(self.students.list(search="S26998")[0]["nameZh"], "新同学")
+        self.assertEqual(self.students.list(search="STU-2024998")[0]["nameZh"], "新同学")
 
     def test_attendance_excel_import_and_anomaly_detection(self) -> None:
         workbook = Workbook()
         sheet = workbook.active
         sheet.append(["日期", "状态", "备注", "学号"])
-        sheet.append(["2026-07-10", "出勤", "", "S26001"])
-        sheet.append(["2026-07-11", "迟到", "交通延误", "S26001"])
-        sheet.append(["2026-07-12", "缺席", "错误学生", "S26002"])
+        sheet.append(["2026-07-10", "出勤", "", "STU-2024001"])
+        sheet.append(["2026-07-11", "迟到", "交通延误", "STU-2024001"])
+        sheet.append(["2026-07-12", "缺席", "错误学生", "STU-2024002"])
         stream = BytesIO(); workbook.save(stream)
-        result = self.attendance.import_excel("student-001", stream.getvalue(), "attendance.xlsx")
+        result = self.attendance.import_excel("stu-0000000001", stream.getvalue(), "attendance.xlsx")
         self.assertEqual(result["imported"], 2)
         self.assertEqual(len(result["errors"]), 1)
-        self.assertTrue(any(row["date"] == "2026-07-11" for row in self.attendance.anomalies("student-001")))
+        self.assertTrue(any(row["date"] == "2026-07-11" for row in self.attendance.anomalies("stu-0000000001")))
 
     def test_bulk_attendance_import_across_students(self) -> None:
         workbook = Workbook()
         sheet = workbook.active
         sheet.append(["学号", "日期", "状态", "备注"])
-        sheet.append(["S26001", "2026-08-20", "迟到", "交通延误"])
-        sheet.append(["S26002", "2026-08-20", "病假", "已交证明"])
-        sheet.append(["S99999", "2026-08-20", "缺席", "不存在的学生"])
+        sheet.append(["STU-2024001", "2026-08-20", "迟到", "交通延误"])
+        sheet.append(["STU-2024002", "2026-08-20", "病假", "已交证明"])
+        sheet.append(["STU-9999999", "2026-08-20", "缺席", "不存在的学生"])
         stream = BytesIO(); workbook.save(stream)
         result = self.attendance.import_bulk_excel(stream.getvalue(), "attendance-bulk.xlsx")
         self.assertEqual(result["imported"], 2)
@@ -105,21 +130,33 @@ class StudentServicesTest(unittest.TestCase):
     def test_work_items_can_filter_by_type_class_and_time(self) -> None:
         rows = self.students.work_items(
             category="attendance",
-            class_name="2A",
-            status="late",
+            class_name="中四A班",
+            status="absent",
             date_from="2026-07-01",
             date_to="2026-07-31",
         )
         self.assertTrue(rows)
-        self.assertTrue(all(row["className"] == "2A" and row["status"] == "late" for row in rows))
+        self.assertTrue(all(row["className"] == "中四A班" and row["status"] == "absent" for row in rows))
         pending = self.students.work_items(category="enrollment_certificate")
         self.assertTrue(all(row["status"] != "generated" for row in pending))
 
     def test_score_export_filters_by_subject(self) -> None:
-        content, filename = self.scores.export_excel("student-001", subject="中国语文")
+        state = self.repository.state()
+        state["scoreRecords"].append({
+            "id": "score-test-001",
+            "studentId": "stu-0000000001",
+            "schoolYear": "2025/26",
+            "term": "上学期",
+            "subject": "中国语文",
+            "score": 88,
+            "grade": "A",
+        })
+        self.repository.save(state)
+
+        content, filename = self.scores.export_excel("stu-0000000001", subject="中国语文")
         workbook = load_workbook(BytesIO(content), data_only=True)
         sheet = workbook["成绩记录"]
-        self.assertIn("S26001", filename)
+        self.assertIn("STU-2024001", filename)
         self.assertEqual(sheet["C5"].value, "中国语文")
         self.assertEqual(sheet.max_row, 5)
 
@@ -132,8 +169,8 @@ class StudentServicesTest(unittest.TestCase):
         self.assertTrue(saved["photoUrl"].startswith("/api/v1/apple/students/photos/"))
 
     def test_certificate_request_and_pdf_generation(self) -> None:
-        request = self.certificates.create("student-001", CertificateCreate(certificateType="enrollment_bilingual", language="bilingual", purpose="测试用途"))
-        pdf_path, updated = self.certificates.generate_pdf("student-001", request["id"])
+        request = self.certificates.create("stu-0000000001", CertificateCreate(certificateType="enrollment_bilingual", language="bilingual", purpose="测试用途"))
+        pdf_path, updated = self.certificates.generate_pdf("stu-0000000001", request["id"])
         self.assertTrue(pdf_path.is_file())
         self.assertGreater(pdf_path.stat().st_size, 500)
         self.assertEqual(updated["status"], "generated")
