@@ -1,116 +1,128 @@
 # 培英中学 AI 数智化平台 — Apple 子系统
 
-培英中学校务管理数字化平台，涵盖**奖状奖学金 (A1)、财务收支 (A2)、资产盘点 (A3)、学生事务 (A4)** 四大模块，集成百度 OCR 智能识别与 DeepSeek AI 结构化能力。
-
----
-
-## 模块一览
-
-| 模块 | 说明 | API 前缀 | 负责人 |
-|------|------|---------|--------|
-| **A1 奖状奖学金** | 奖状模板管理/颁发/审核、奖学金申请审批 | /api/v1/apple/awards | 同学 2 |
-| **A2 财务收支** | 收入/支出记录、收据 OCR、报价单分析、地址标签 | /api/v1/apple/finance | 同学 3 |
-| **A3 资产盘点** | 资产登记/移动/注销、盘点报告、发票 OCR | /api/v1/apple/assets | 同学 3 |
-| **A4 学生事务** | 学生档案、考勤导入、在学证明、成绩导出 | /api/v1/apple/students | 同学 4 |
-
----
-
-## 技术栈
-
-- **后端**: Python 3.12 + FastAPI + SQLAlchemy 2.0 Async + Celery
-- **前端**: Next.js 15 + TypeScript + Tailwind CSS
-- **数据库**: PostgreSQL 16（开发可用 SQLite）
-- **缓存/队列**: Redis 7
-- **OCR**: 百度智能云 OCR（主引擎）+ Tesseract.js（浏览器回退）
-- **AI 结构化**: DeepSeek（用户自备 Key）
-- **容器化**: Docker Compose
-
----
-
-## 快速开始
-
-### Docker 部署
-
-`ash
-cp .env.example .env
-# 编辑 .env 填写百度 OCR Key、数据库地址等
-
-docker compose up -d db redis
-docker compose up -d --build api worker
-docker compose exec api alembic upgrade head
-docker compose up -d --build web
-`
-
-### 本地开发（SQLite）
-
-`ash
-# 后端
-cd apps/api
-pip install -r requirements.txt
-="sqlite+aiosqlite:///./test.db"
-uvicorn app.main:app --reload --port 8000
-
-# 前端（新终端）
-cd apps/web
-npm install --legacy-peer-deps
-npm run dev
-`
+培英中学校务管理数字化平台，涵盖 **奖状奖学金（A1）、财务收支（A2）、资产盘点（A3）、学生事务（A4）** 四大模块，集成百度 OCR 智能识别与 DeepSeek AI 结构化能力。
 
 ---
 
 ## 项目结构
 
-`
+```
+puiying-ai-apple/
 ├── apps/
-│   ├── api/              # FastAPI 后端
+│   ├── api/              # FastAPI 后端（端口 8001）
 │   │   ├── app/core/     # 配置/安全/权限
 │   │   ├── app/db/       # ORM 会话/基类
 │   │   └── app/modules/  # 各业务模块
-│   └── web/              # Next.js 前端
+│   └── web/              # Next.js 前端（端口 3000）
 ├── workers/
-│   └── ocr_worker/       # Celery OCR Worker
+│   └── ocr_worker/       # OCR Worker
 ├── docs/                 # 项目文档
-└── docker-compose.yml
-`
+├── docker-compose.yml    # Docker 编排
+├── .env.example          # 环境变量模板
+└── README.md
+```
 
----
+## 快速开始（本地开发，SQLite 模式）
+
+### 前置要求
+
+- Python 3.12+
+- Node.js 18+
+- 百度 OCR API Key（可选，不配则用浏览器 Tesseract 降级）
+
+### 1. 后端启动
+
+```bash
+cd apps/api
+pip install -r requirements.txt
+```
+
+复制环境变量并填写百度 OCR Key：
+
+```bash
+cp ../../.env.example .env
+# 编辑 .env，填写：
+# BAIDU_OCR_API_KEY=你的Key
+# BAIDU_OCR_SECRET_KEY=你的Secret
+# BAIDU_OCR_ENABLED=true
+```
+
+（可选）如无百度 Key，OCR 会降级为浏览器 Tesseract.js，准确率较低，但不影响演示。
+
+启动后端：
+
+```bash
+uvicorn app.main:app --host 127.0.0.1 --port 8001
+```
+
+首次启动会自动创建 SQLite 数据库和表。
+
+### 2. 导入演示数据
+
+后端启动后，新开一个终端：
+
+```bash
+cd apps/api
+python scripts/seed_demo_data.py     # 创建角色/权限/管理员 + 50名学生/100条财务/200件资产
+python scripts/seed_awards_demo.py   # 创建3个奖项 + 50名获奖学生 + 3条奖学金申请
+```
+
+演示账号：`admin` / `admin123`
+
+### 3. 前端启动
+
+```bash
+cd apps/web
+npm install --legacy-peer-deps
+```
+
+创建 `.env.local`：
+
+```
+NEXT_PUBLIC_API_URL=http://localhost:8001
+```
+
+启动：
+
+```bash
+npm run dev
+```
+
+访问 `http://localhost:3000`，用 `admin / admin123` 登录。
 
 ## 演示账号
 
-| 用户 | 密码 | 角色 | 权限 |
-|------|------|------|------|
-| admin | admin123 | 超级管理员 | 全部 |
-| wendy | demo123 | 德育主任 | 奖状+学生 |
-| tommy | demo123 | 总务主任 | 财务+资产 |
-| steven | demo123 | 财务人员 | 财务 |
-| danielle | demo123 | 资产管理员 | 资产 |
+| 用户 | 密码 | 角色 |
+|------|------|------|
+| admin | admin123 | 超级管理员（全部权限） |
+| wendy | demo123 | 德育主任（奖状+学生） |
+| tommy | demo123 | 总务主任（财务+资产） |
+| steven | demo123 | 财务人员 |
+| danielle | demo123 | 资产管理员 |
 
----
+## OCR 识别说明
+
+OCR 使用三级降级策略，无需额外配置即可演示：
+
+| 引擎 | 说明 | 本地 Windows | 部署 Linux |
+|------|------|-------------|-----------|
+| PaddleOCR | 本地高性能引擎 | 不可用（Segfault） | ✅ 正常 |
+| 百度 OCR | HTTP API（配 Key） | ✅ 首选 | ✅ 备选 |
+| Tesseract.js | 浏览器离线 | ✅ 兜底 | ✅ 兜底 |
+
+有百度 Key 时自动启用，无 Key 时走 Tesseract.js，不影响基础流程演示。
 
 ## 文档索引
 
 | 文档 | 说明 |
 |------|------|
-| [docs/apple-system-overview.md](docs/apple-system-overview.md) | 子系统总览（架构/技术栈/约定） |
-| [docs/module-awards.md](docs/module-awards.md) | A1 奖状奖学金模块 |
-| [docs/module-finance-assets.md](docs/module-finance-assets.md) | A2 财务收支模块 |
-| [docs/module-assets.md](docs/module-assets.md) | A3 资产盘点模块 |
-| [docs/module-students-ai.md](docs/module-students-ai.md) | A4 学生事务 + AI Prompt |
-| [docs/ocr-worker.md](docs/ocr-worker.md) | OCR Worker 技术文档 |
-| [docs/deployment-guide.md](docs/deployment-guide.md) | 部署指南 |
-| [docs/testing-report.md](docs/testing-report.md) | 测试报告 |
-| [docs/demo-guide.md](docs/demo-guide.md) | 演示手册 |
-| [docs/acceptance-checklist.md](docs/acceptance-checklist.md) | 验收清单 |
-
----
-
-## 开发规范
-
-- **Commit 格式**: [模块] 动作：描述（如 [awards] feat: add certificate template）
-- **API 规范**: RESTful，统一返回 { code, data, message }
-- **权限**: @require_permission("apple:awards:read")
-- **审计**: 关键操作写入 udit_logs 表
-- **PR**: 至少 1 位 reviewer 通过
+| docs/deployment-guide.md | 部署指南（Docker + 本地） |
+| docs/module-awards.md | 奖状奖学金模块 |
+| docs/module-finance-assets.md | 财务 + 资产模块 |
+| docs/module-students-ai.md | 学生事务 + AI Prompt |
+| docs/ocr-worker.md | OCR Worker 文档 |
+| docs/demo-guide.md | 演示手册 |
+| docs/testing-report.md | 测试报告 |
 
 ---
 
