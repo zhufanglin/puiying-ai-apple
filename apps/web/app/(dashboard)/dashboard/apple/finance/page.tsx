@@ -151,26 +151,30 @@ export default function FinancePage() {
   useEffect(() => { loadFromAPI(); }, []);
 
   const handleReceipt = async (r: { amount:number|null; date:string; payer:string; purpose:string; fileId?:number }) => {
-    if (r.amount && r.date && r.purpose && r.payer) {
-      try {
-        await api.post("/apple/finance/income", {
-          type: "income",
-          date: r.date,
-          project: r.purpose,
-          amount: r.amount,
-          payment_method: "現金",
-          handler: r.payer,
-          file_id: r.fileId,
-        });
-        await loadFromAPI(); // 重新加載列表
-      } catch {
-        // API 不可用，本地追加
-        const n: IncomeRecord = {
-          id: incomeData.length + 1, date: r.date, project: r.purpose,
-          amount: r.amount??0, paymentMethod:"現金", handler: r.payer, status:"pending",
-        };
-        setIncomeData(p=>[n,...p]);
-      }
+    if (r.amount == null || r.amount <= 0) {
+      alert("金額無效，請先填寫金額");
+      return;
+    }
+    try {
+      const payload = {
+        type: "income",
+        date: r.date || new Date().toISOString().slice(0, 10),
+        project: r.purpose || "收據收入",
+        amount: r.amount,
+        payment_method: "現金",
+        handler: r.payer || "經手人",
+        file_id: r.fileId,
+      };
+      const res = await api.post("/apple/finance/income", payload);
+      if (res.code !== 0) { alert("寫入失敗：" + res.message); return; }
+      await loadFromAPI(); // 重新加載列表
+    } catch {
+      // API 不可用，本地追加
+      const n: IncomeRecord = {
+        id: incomeData.length + 1, date: r.date || new Date().toISOString().slice(0, 10), project: r.purpose || "收據收入",
+        amount: r.amount ?? 0, paymentMethod:"現金", handler: r.payer || "經手人", status:"pending",
+      };
+      setIncomeData(p=>[n,...p]);
     }
   };
 

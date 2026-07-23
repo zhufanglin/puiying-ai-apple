@@ -13,6 +13,7 @@ const statusMap: Record<string, { label: string; className: string }> = {
   confirmed: { label: "已入賬", className: "bg-green-50 text-green-700 border-green-200" },
   // 資產模塊
   active: { label: "正常", className: "bg-green-50 text-green-700 border-green-200" },
+  maintenance: { label: "保養中", className: "bg-blue-50 text-blue-700 border-blue-200" },
   moved: { label: "已搬移", className: "bg-yellow-50 text-yellow-700 border-yellow-200" },
   written_off: { label: "已註銷", className: "bg-gray-50 text-gray-600 border-gray-200" },
   missing: { label: "找不到", className: "bg-red-50 text-red-700 border-red-200" },

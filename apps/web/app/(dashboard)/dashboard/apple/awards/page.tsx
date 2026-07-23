@@ -20,6 +20,7 @@ interface AwardRecord {
 
 const STATUS_MAP: Record<string, { label: string; className: string }> = {
   draft: { label: "草稿", className: "bg-gray-50 text-gray-600" },
+  calculated: { label: "已核算", className: "bg-blue-50 text-blue-700" },
   pending: { label: "待審批", className: "bg-yellow-50 text-yellow-700" },
   confirmed: { label: "已確認", className: "bg-green-50 text-green-700" },
   published: { label: "已發佈", className: "bg-[#ecfdf3] text-[#23675f]" },

@@ -34,6 +34,14 @@ async function request<T>(
     }
   }
   if (!res.ok) {
+    // token 无效或过期时自动清除并跳转登录页
+    if (res.status === 401 || res.status === 403) {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("token");
+        window.location.href = "/";
+      }
+      return json;
+    }
     const detail = typeof json.detail === "string"
       ? json.detail
       : json.detail?.message;
