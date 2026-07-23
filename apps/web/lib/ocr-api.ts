@@ -177,17 +177,11 @@ export async function recognizeWithServerFallback(
 ): Promise<ServerOcrResult> {
   const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-  // 1) 优先使用后端 PaddleOCR（高性能本地引擎，无需 API key）
-  options.onStatus?.("PaddleOCR 本地识别中...");
-  try {
-    options.onProgress?.(0.1);
-    const ocr = await recognizeWithPaddle(file, options.onProgress);
-    return { ocr, fileId: null, engine: "paddleocr" };
-  } catch (_paddleError) {
-    // PaddleOCR 不可用（Windows 上可能 Segfault），继续下一级
-  }
+  // [跳过] PaddleOCR：Windows 上 PaddleX PP-LCNet 模型加载会 Segfault 杀死后端进程
+  // 直接跳到百度 OCR（Linux/Render 部署后 PaddleOCR 可正常使用）
+  options.onStatus?.("PaddleOCR 在 Windows 上不可用，直接使用百度 OCR...");
 
-  // 2) 百度 OCR 同步端点（无需 Redis/Celery，直连百度 API）
+  // 1) 百度 OCR 同步端点（无需 Redis/Celery，直连百度 API）
   options.onStatus?.("PaddleOCR 失败，改用百度 OCR 线上识别...");
   try {
     options.onProgress?.(0.1);
