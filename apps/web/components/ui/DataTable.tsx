@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useState } from "react";
 
 export interface Column<T> {
   key: string;
@@ -32,6 +33,31 @@ export default function DataTable<T>({
   emptyText = "暫無數據",
 }: DataTableProps<T>) {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const isControlled = typeof onPageChange === "function";
+  const [internalPage, setInternalPage] = useState(page);
+  const activePage = isControlled ? page : internalPage;
+  const visibleData = isControlled
+    ? data
+    : data.slice((activePage - 1) * pageSize, activePage * pageSize);
+
+  useEffect(() => {
+    if (isControlled) setInternalPage(page);
+  }, [isControlled, page]);
+
+  useEffect(() => {
+    if (!isControlled && internalPage > totalPages) {
+      setInternalPage(totalPages);
+    }
+  }, [internalPage, isControlled, totalPages]);
+
+  const handlePageChange = (nextPage: number) => {
+    const boundedPage = Math.min(Math.max(1, nextPage), totalPages);
+    if (isControlled) {
+      onPageChange?.(boundedPage);
+    } else {
+      setInternalPage(boundedPage);
+    }
+  };
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -60,14 +86,14 @@ export default function DataTable<T>({
                   加載中...
                 </td>
               </tr>
-            ) : data.length === 0 ? (
+            ) : visibleData.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="px-4 py-12 text-center text-gray-400">
                   {emptyText}
                 </td>
               </tr>
             ) : (
-              data.map((row, i) => (
+              visibleData.map((row, i) => (
                 <tr key={i} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
                   {columns.map((col) => (
                     <td
@@ -90,12 +116,12 @@ export default function DataTable<T>({
       {total > 0 && (
         <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
           <span className="text-sm text-gray-500">
-            共 {total} 條，第 {page}/{totalPages} 頁
+            共 {total} 條，第 {activePage}/{totalPages} 頁
           </span>
           <div className="flex items-center gap-1">
             <button
-              onClick={() => onPageChange?.(page - 1)}
-              disabled={page <= 1}
+              onClick={() => handlePageChange(activePage - 1)}
+              disabled={activePage <= 1}
               className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
             >
               <ChevronLeft size={16} />
@@ -105,9 +131,9 @@ export default function DataTable<T>({
               return (
                 <button
                   key={p}
-                  onClick={() => onPageChange?.(p)}
+                  onClick={() => handlePageChange(p)}
                   className={`w-8 h-8 text-sm rounded ${
-                    p === page ? "bg-primary-500 text-white" : "hover:bg-gray-100 text-gray-600"
+                    p === activePage ? "bg-primary-500 text-white" : "hover:bg-gray-100 text-gray-600"
                   }`}
                 >
                   {p}
@@ -115,8 +141,8 @@ export default function DataTable<T>({
               );
             })}
             <button
-              onClick={() => onPageChange?.(page + 1)}
-              disabled={page >= totalPages}
+              onClick={() => handlePageChange(activePage + 1)}
+              disabled={activePage >= totalPages}
               className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
             >
               <ChevronRight size={16} />
