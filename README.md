@@ -120,6 +120,7 @@ OCR 使用三级降级策略，无需额外配置即可演示：
 | docs/module-awards.md | 奖状奖学金模块 |
 | docs/module-finance-assets.md | 财务 + 资产模块 |
 | docs/module-students-ai.md | 学生事务 + AI Prompt |
+| docs/08-module-scores.md | 成绩分析 + AI 评语 + WhatsApp 推送 |
 | docs/ocr-worker.md | OCR Worker 文档 |
 | docs/demo-guide.md | 演示手册 |
 | docs/testing-report.md | 测试报告 |

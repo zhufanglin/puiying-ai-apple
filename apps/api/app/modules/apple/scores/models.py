@@ -1,74 +1,87 @@
-"""成绩管理 数据库模型
+"""成績管理與 AI 評語的 SQLAlchemy 表契約。"""
+from __future__ import annotations
 
-表说明：
-  - apple_exam_templates  试卷模板（定义试卷结构、题号位置、满分）
-  - apple_exam_scores     考试成绩（每题得分，关联模板）
-  - apple_score_comments  AI 生成的评语
-  - apple_raw_scores      原始采集暂存（OCR/PDF提取后待确认）
+from datetime import datetime
+from decimal import Decimal
 
-关联关系：
-  ExamScore → ExamTemplate (M:1)
-  ExamScore → Student (M:1)
-  ScoreComment → Student (M:1)
-"""
-from datetime import datetime, timezone
-
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, JSON, Numeric, Text, VARCHAR
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Numeric, String, Text, UniqueConstraint
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin
 
 
-class ExamTemplate(Base, TimestampMixin):
-    """试卷模板"""
-    __tablename__ = "apple_exam_templates"
+class Score(Base, TimestampMixin):
+    """一名學生在一次考試中的單科成績。"""
 
-    name = Column(VARCHAR(100), nullable=False, comment="模板名称")
-    subject = Column(VARCHAR(50), nullable=False, comment="科目")
-    full_mark = Column(Numeric(5, 1), nullable=False, comment="满分")
-    total_questions = Column(Integer, nullable=False, comment="总题数")
-    config_json = Column(JSON, nullable=True, comment="模板配置（坐标、题号、满分等）")
-    is_active = Column(VARCHAR(20), default="active", nullable=False, comment="active/inactive")
+    __tablename__ = "apple_scores"
+    __table_args__ = (
+        UniqueConstraint(
+            "student_id",
+            "school_year",
+            "term",
+            "exam_type",
+            "subject",
+            name="uq_apple_scores_student_exam_subject",
+        ),
+        CheckConstraint("score >= 0", name="ck_apple_scores_non_negative"),
+        CheckConstraint("full_mark > 0", name="ck_apple_scores_full_mark_positive"),
+        CheckConstraint("score <= full_mark", name="ck_apple_scores_not_over_full_mark"),
+        Index("ix_apple_scores_exam", "school_year", "term", "exam_type"),
+    )
 
-
-class ExamScore(Base, TimestampMixin):
-    """考试成绩"""
-    __tablename__ = "apple_exam_scores"
-
-    student_id = Column(VARCHAR(64), ForeignKey("apple_students.id"), nullable=False, comment="关联学生")
-    exam_name = Column(VARCHAR(100), nullable=False, comment="考试名称")
-    template_id = Column(Integer, ForeignKey("apple_exam_templates.id"), nullable=True, comment="关联试卷模板")
-    question_no = Column(Integer, nullable=False, comment="题号")
-    score = Column(Numeric(5, 1), nullable=False, comment="该题得分")
-    full_mark = Column(Numeric(5, 1), nullable=False, comment="该题满分")
-    source = Column(VARCHAR(20), default="excel", nullable=False, comment="数据来源：ocr/pdf/excel/manual")
-    created_by = Column(VARCHAR(64), nullable=True, comment="录入人")
+    student_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("apple_students.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    school_year: Mapped[str] = mapped_column(String(16), nullable=False)
+    term: Mapped[str] = mapped_column(String(24), nullable=False)
+    exam_type: Mapped[str] = mapped_column(String(80), nullable=False)
+    subject: Mapped[str] = mapped_column(String(80), nullable=False)
+    score: Mapped[Decimal] = mapped_column(Numeric(7, 2), nullable=False)
+    full_mark: Mapped[Decimal] = mapped_column(Numeric(7, 2), nullable=False, default=100)
+    source: Mapped[str] = mapped_column(String(20), nullable=False, default="excel")
+    source_filename: Mapped[str | None] = mapped_column(String(255))
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
 
 
 class ScoreComment(Base, TimestampMixin):
-    """AI 评语"""
+    """AI 評語、教師審閱狀態及逐名學生的 WhatsApp 發送狀態。"""
+
     __tablename__ = "apple_score_comments"
+    __table_args__ = (
+        UniqueConstraint(
+            "student_id",
+            "school_year",
+            "term",
+            "exam_type",
+            name="uq_apple_score_comments_student_exam",
+        ),
+        CheckConstraint(
+            "status IN ('pending', 'confirmed', 'sent')",
+            name="ck_apple_score_comments_status",
+        ),
+        CheckConstraint(
+            "delivery_status IN ('not_sent', 'pending', 'sent', 'delivered', 'read', 'failed')",
+            name="ck_apple_score_comments_delivery_status",
+        ),
+        Index("ix_apple_score_comments_exam", "school_year", "term", "exam_type"),
+        Index("ix_apple_score_comments_status", "status", "delivery_status"),
+    )
 
-    student_id = Column(VARCHAR(64), ForeignKey("apple_students.id"), nullable=False, comment="关联学生")
-    exam_name = Column(VARCHAR(100), nullable=False, comment="考试名称")
-    comment_text = Column(Text, nullable=False, comment="评语正文")
-    highlight_subject = Column(VARCHAR(50), nullable=True, comment="最强科目")
-    improve_subject = Column(VARCHAR(50), nullable=True, comment="需加强科目")
-    suggestion = Column(Text, nullable=True, comment="具体建议")
-    status = Column(VARCHAR(20), default="pending", nullable=False, comment="pending/confirmed/sent")
-    reviewed_by = Column(Integer, ForeignKey("users.id"), nullable=True, comment="审核人")
-    reviewed_at = Column(DateTime(timezone=True), nullable=True, comment="审核时间")
-
-
-class RawScore(Base, TimestampMixin):
-    """原始采集数据临时表"""
-    __tablename__ = "apple_raw_scores"
-
-    exam_name = Column(VARCHAR(100), nullable=False, comment="考试名称")
-    template_id = Column(Integer, ForeignKey("apple_exam_templates.id"), nullable=True, comment="关联试卷模板")
-    source_type = Column(VARCHAR(20), nullable=False, comment="ocr/pdf/excel")
-    source_file_id = Column(Integer, ForeignKey("files.id"), nullable=True, comment="关联上传文件")
-    raw_data = Column(JSON, nullable=True, comment="OCR/PDF提取的原始JSON")
-    matched_data = Column(JSON, nullable=True, comment="与学生匹配后的结构化数据")
-    status = Column(VARCHAR(20), default="pending", nullable=False, comment="pending/matched/confirmed")
-    confirmed_at = Column(DateTime(timezone=True), nullable=True, comment="人工确认时间")
-    created_by = Column(Integer, ForeignKey("users.id"), nullable=True, comment="创建人")
+    student_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("apple_students.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    school_year: Mapped[str] = mapped_column(String(16), nullable=False)
+    term: Mapped[str] = mapped_column(String(24), nullable=False)
+    exam_type: Mapped[str] = mapped_column(String(80), nullable=False)
+    comment_text: Mapped[str] = mapped_column(Text, nullable=False)
+    highlight_subject: Mapped[str | None] = mapped_column(String(80))
+    improve_subject: Mapped[str | None] = mapped_column(String(80))
+    suggestion: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+    delivery_status: Mapped[str] = mapped_column(String(20), nullable=False, default="not_sent")
+    reviewed_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    whatsapp_message_id: Mapped[str | None] = mapped_column(String(160), index=True)
+    send_error: Mapped[str | None] = mapped_column(String(500))
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))

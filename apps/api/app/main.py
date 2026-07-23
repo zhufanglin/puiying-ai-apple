@@ -70,6 +70,7 @@ from app.modules.apple.notifications import models as _notification_models
 from app.modules.apple.notifications.router import router as notifications_router
 from app.modules.apple.notifications.webhook import router as webhook_router
 from app.modules.apple.scores import models as _score_models
+from app.modules.apple.scores.router import router as scores_router
 from app.modules.files.router import router as files_router
 from app.modules.ocr.router import router as ocr_router
 
@@ -79,6 +80,7 @@ app.include_router(assets_router, prefix=f"{settings.API_PREFIX}/apple/assets", 
 app.include_router(students_router, prefix=f"{settings.API_PREFIX}/apple/students", tags=["Apple-学生事务"])
 app.include_router(notifications_router, prefix=settings.API_PREFIX, tags=["Apple-通告通知"])
 app.include_router(webhook_router, prefix=settings.API_PREFIX, tags=["Apple-WhatsApp Webhook"])
+app.include_router(scores_router, prefix=f"{settings.API_PREFIX}/apple/scores", tags=["Apple-成績評語"])
 app.include_router(files_router, prefix=f"{settings.API_PREFIX}/files", tags=["文件管理"])
 app.include_router(ocr_router, prefix=f"{settings.API_PREFIX}/ocr", tags=["OCR 任务"])
 
