@@ -23,6 +23,7 @@ import { api } from "@/lib/api";
 const B = "#23675f"; const B2 = "#174f49"; const BG = "#f6f7f9";
 const BD = "#d8dee6"; const TX = "#1d2939"; const MU = "#667085";
 const SH = "0 10px 30px rgba(16,24,40,0.08)";
+const TABLE_PAGE_SIZE = 20;
 
 type TabKey = "income" | "expense" | "quotations";
 
@@ -111,6 +112,8 @@ export default function FinancePage() {
   const [dataReady, setDataReady] = useState(false);
   const [ifilters, setIfilters] = useState<Record<string,string>>({});
   const [efilters, setEfilters] = useState<Record<string,string>>({});
+  const [incomePage, setIncomePage] = useState(1);
+  const [expensePage, setExpensePage] = useState(1);
 
   // 從 API 加載收入/支出
   const mapInc = (items: any[]): IncomeRecord[] => items.map((r: any) => ({
@@ -130,10 +133,10 @@ export default function FinancePage() {
         api.get<{items:any[]}>("/apple/finance/income"),
         api.get<{items:any[]}>("/apple/finance/expense"),
       ]);
-      if (incRes.data?.items?.length) setIncomeData(mapInc(incRes.data.items));
-      if (expRes.data?.items?.length) setExpenseData(mapExp(expRes.data.items));
+      if (incRes.data?.items) setIncomeData(mapInc(incRes.data.items));
+      if (expRes.data?.items) setExpenseData(mapExp(expRes.data.items));
       const qRes = await api.get<{items:any[]}>("/apple/finance/quotations").catch(() => ({} as any));
-      if (qRes.data?.items?.length) setQuotationData(qRes.data.items.map((r:any) => ({
+      if (qRes.data?.items) setQuotationData(qRes.data.items.map((r:any) => ({
         id: r.id, projectName: r.project_name??r.projectName??r.project??"",
         vendor: r.vendor??"", amount: r.amount??0,
         isLowest: r.is_lowest??r.isLowest??false, isSelected: r.is_selected??r.isSelected??false,
@@ -165,15 +168,26 @@ export default function FinancePage() {
         handler: r.payer || "經手人",
         file_id: r.fileId,
       };
-      const res = await api.post("/apple/finance/income", payload);
-      if (res.code !== 0) { alert("寫入失敗：" + res.message); return; }
-      await loadFromAPI(); // 重新加載列表
+      const res = await api.post<any>("/apple/finance/income", payload);
+      if (res.code !== 0) throw new Error("寫入失敗：" + res.message);
+      const created = res.data ? mapInc([res.data])[0] : null;
+      if (created) {
+        setIncomeData((previous) => [created, ...previous.filter((item) => item.id !== created.id)]);
+      }
+      setActiveTab("income");
+      setIfilters({});
+      setIncomePage(1);
+      setDataReady(true);
     } catch {
       // API 不可用，本地追加
       const n: IncomeRecord = {
         id: incomeData.length + 1, date: r.date || new Date().toISOString().slice(0, 10), project: r.purpose || "收據收入",
         amount: r.amount ?? 0, paymentMethod:"現金", handler: r.payer || "經手人", status:"pending",
       };
+      setActiveTab("income");
+      setIfilters({});
+      setIncomePage(1);
+      setDataReady(true);
       setIncomeData(p=>[n,...p]);
     }
   };
@@ -218,6 +232,8 @@ export default function FinancePage() {
     if (efilters.supplier && !r.supplier.includes(efilters.supplier)) return false;
     return true;
   });
+  const pagedIncome = filteredIncome.slice((incomePage - 1) * TABLE_PAGE_SIZE, incomePage * TABLE_PAGE_SIZE);
+  const pagedExpense = filteredExpense.slice((expensePage - 1) * TABLE_PAGE_SIZE, expensePage * TABLE_PAGE_SIZE);
 
   const qRowClass = (row: QuotationRecord, all: QuotationRecord[]) => {
     const same = all.filter(r=>r.projectName===row.projectName);
@@ -280,9 +296,9 @@ export default function FinancePage() {
           <FilterBar fields={[
             {key:"status",label:"狀態",type:"select",options:[{label:"已入賬",value:"confirmed"},{label:"待入賬",value:"pending"}]},
             {key:"project",label:"項目",type:"text",placeholder:"項目名"},
-          ]} values={ifilters} onChange={(k,v)=>setIfilters(p=>({...p,[k]:v}))} onReset={()=>setIfilters({})} onSearch={()=>{}} />
+          ]} values={ifilters} onChange={(k,v)=>{setIncomePage(1);setIfilters(p=>({...p,[k]:v}));}} onReset={()=>{setIncomePage(1);setIfilters({});}} onSearch={()=>{}} />
 
-          <DataTable columns={incomeCols} data={filteredIncome} total={filteredIncome.length} page={1} pageSize={20} emptyText="暫無收入記錄" />
+          <DataTable columns={incomeCols} data={pagedIncome} total={filteredIncome.length} page={incomePage} pageSize={TABLE_PAGE_SIZE} onPageChange={setIncomePage} emptyText="暫無收入記錄" />
         </div>
       )}
 
@@ -299,9 +315,9 @@ export default function FinancePage() {
           <FilterBar fields={[
             {key:"status",label:"狀態",type:"select",options:[{label:"已通過",value:"approved"},{label:"待審批",value:"pending"},{label:"已拒絕",value:"rejected"}]},
             {key:"supplier",label:"供應商",type:"text",placeholder:"供應商名"},
-          ]} values={efilters} onChange={(k,v)=>setEfilters(p=>({...p,[k]:v}))} onReset={()=>setEfilters({})} onSearch={()=>{}} />
+          ]} values={efilters} onChange={(k,v)=>{setExpensePage(1);setEfilters(p=>({...p,[k]:v}));}} onReset={()=>{setExpensePage(1);setEfilters({});}} onSearch={()=>{}} />
 
-          <DataTable columns={expenseCols} data={filteredExpense} total={filteredExpense.length} page={1} pageSize={20} emptyText="暫無支出記錄" />
+          <DataTable columns={expenseCols} data={pagedExpense} total={filteredExpense.length} page={expensePage} pageSize={TABLE_PAGE_SIZE} onPageChange={setExpensePage} emptyText="暫無支出記錄" />
         </div>
       )}
 

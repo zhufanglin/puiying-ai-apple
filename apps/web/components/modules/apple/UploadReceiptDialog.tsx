@@ -29,7 +29,7 @@ interface OCRResult {
   warnings: string[]; raw_text: string;
 }
 
-interface Props { open: boolean; onClose: () => void; onConfirm: (data: OCRResult) => void; }
+interface Props { open: boolean; onClose: () => void; onConfirm: (data: OCRResult) => void | Promise<void>; }
 
 function fromWorkerStructured(
   structured: ServerStructuredResult | undefined,
@@ -92,6 +92,7 @@ export default function UploadReceiptDialog({ open, onClose, onConfirm }: Props)
   const [error, setError] = useState<string|null>(null);
   const [statusText, setStatusText] = useState("OCR 識別中...");
   const [analysisSource, setAnalysisSource] = useState("");
+  const [saving, setSaving] = useState(false);
   const [aiConfig, setAiConfig] = useState<ReceiptAIConfig>({
     ...DEFAULT_RECEIPT_AI_CONFIG,
   });
@@ -201,12 +202,21 @@ export default function UploadReceiptDialog({ open, onClose, onConfirm }: Props)
   const close = () => {
     setStep("upload"); setOcr(null); setEdit(null); setError(null);
     setAnalysisSource(""); setStatusText("OCR 識別中...");
+    setSaving(false);
     onClose();
   };
 
-  const confirm = () => {
-    if (edit) onConfirm(edit);
-    close();
+  const confirm = async () => {
+    if (!edit || saving) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await onConfirm(edit);
+      close();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "入庫失敗，請稍後再試");
+      setSaving(false);
+    }
   };
 
   const upd = (f: keyof OCRResult, v: string|number|null) => {
@@ -451,25 +461,36 @@ export default function UploadReceiptDialog({ open, onClose, onConfirm }: Props)
             </div>
 
             {/* 操作按鈕 */}
+            {error && (
+              <div className="flex items-start gap-2 p-3 rounded-lg border border-[#fecaca] bg-[#fef2f2] text-sm text-[#b42318]">
+                <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+                <span>{error}</span>
+              </div>
+            )}
+
             <div className="flex justify-end gap-2 pt-2 border-t border-[#d8dee6]">
               <button
                 onClick={() => { setStep("upload"); setError(null); }}
+                disabled={saving}
                 className="px-4 py-[8px] text-sm text-[#667085] hover:bg-[#f1f5f8] rounded-lg border border-[#d8dee6] font-bold"
               >
                 重新上傳
               </button>
               <button
                 onClick={close}
+                disabled={saving}
                 className="px-4 py-[8px] text-sm text-[#667085] hover:bg-[#f1f5f8] rounded-lg font-bold"
               >
                 取消
               </button>
               <button
                 onClick={confirm}
+                disabled={saving}
                 style={{ background: B, borderColor: B }}
-                className="px-4 py-[8px] text-sm text-white rounded-lg font-bold hover:opacity-90"
+                className="px-4 py-[8px] text-sm text-white rounded-lg font-bold hover:opacity-90 disabled:opacity-60"
               >
                 確認入庫
+                {saving && <span className="ml-1">入庫中...</span>}
               </button>
             </div>
           </div>
