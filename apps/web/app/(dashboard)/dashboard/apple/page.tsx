@@ -6,6 +6,7 @@ import {
   Receipt,
   Package,
   GraduationCap,
+  Megaphone,
   TrendingUp,
   ClipboardList,
   AlertTriangle,
@@ -23,7 +24,7 @@ export default function AppleOverviewPage() {
   const [logs] = useState([
     { action: "系統就緒", target: "Apple 子系統已啟動", time: "—", status: "info" },
     { action: "數據已加載", target: "從 API 獲取統計數據", time: "—", status: "success" },
-    { action: "模塊正常", target: "A1 獎狀 · A2 財務 · A3 資產 · A4 學生", time: "—", status: "success" },
+    { action: "模塊正常", target: "A1 獎狀 · A2 財務 · A3 資產 · A4 學生 · 通告", time: "—", status: "success" },
   ]);
 
   useEffect(() => {
@@ -89,6 +90,7 @@ export default function AppleOverviewPage() {
               { label: "財務收支", href: "/dashboard/apple/finance", icon: Receipt },
               { label: "資產盤點", href: "/dashboard/apple/assets", icon: Package },
               { label: "學生查詢", href: "/dashboard/apple/students", icon: GraduationCap },
+              { label: "通告管理", href: "/dashboard/apple/notifications", icon: Megaphone },
             ].map((item) => (
               <a
                 key={item.label}

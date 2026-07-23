@@ -9,6 +9,7 @@ import {
   Receipt,
   Package,
   GraduationCap,
+  Megaphone,
   ChevronLeft,
   Menu,
   LogOut,
@@ -39,6 +40,11 @@ const menuItems = [
     href: "/dashboard/apple/students",
     label: "學生事務",
     icon: GraduationCap,
+  },
+  {
+    href: "/dashboard/apple/notifications",
+    label: "通告管理",
+    icon: Megaphone,
   },
 ];
 

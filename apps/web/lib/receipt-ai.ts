@@ -62,7 +62,7 @@ export async function structureReceiptWithAI(
   ocr: OcrResult,
   config: ReceiptAIConfig,
   options: {
-    engine: "baidu_ocr" | "tesseract_js";
+    engine: "baidu_ocr" | "paddleocr" | "tesseract_js";
     fileId: number | null;
   },
 ): Promise<ReceiptResult> {

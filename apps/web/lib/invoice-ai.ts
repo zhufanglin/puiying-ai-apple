@@ -45,7 +45,7 @@ export async function structureInvoiceWithAI(
   ocr: OcrResult,
   config: InvoiceAIConfig,
   options: {
-    engine: "baidu_ocr" | "tesseract_js";
+    engine: "baidu_ocr" | "paddleocr" | "tesseract_js";
     fileId: number | null;
   },
 ): Promise<InvoiceResult> {

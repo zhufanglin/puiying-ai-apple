@@ -1,12 +1,14 @@
 "use client";
 
 import { AlertTriangle } from "lucide-react";
+import type { ReactNode } from "react";
 
 interface ConfirmDialogProps {
   open: boolean;
   title: string;
   message: string;
   variant?: string;
+  children?: ReactNode;
   confirmText?: string;
   cancelText?: string;
   danger?: boolean;
@@ -19,6 +21,8 @@ export default function ConfirmDialog({
   open,
   title,
   message,
+  variant,
+  children,
   confirmText = "確認",
   cancelText = "取消",
   danger,
@@ -28,6 +32,8 @@ export default function ConfirmDialog({
 }: ConfirmDialogProps) {
   if (!open) return null;
 
+  const isDanger = danger || variant === "danger";
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* 遮罩 */}
@@ -36,7 +42,7 @@ export default function ConfirmDialog({
       {/* 彈窗 */}
       <div className="relative bg-white rounded-xl shadow-xl border border-gray-200 w-full max-w-sm p-6 mx-4">
         <div className="flex items-start gap-3 mb-4">
-          {danger && (
+          {isDanger && (
             <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center shrink-0">
               <AlertTriangle size={20} className="text-red-500" />
             </div>
@@ -46,6 +52,8 @@ export default function ConfirmDialog({
             <p className="text-sm text-gray-500 mt-1">{message}</p>
           </div>
         </div>
+
+        {children && <div className="mb-4">{children}</div>}
 
         <div className="flex justify-end gap-2">
           <button
@@ -59,7 +67,7 @@ export default function ConfirmDialog({
             onClick={onConfirm}
             disabled={loading}
             className={`px-4 py-2 text-sm text-white rounded-lg ${
-              danger ? "bg-red-500 hover:bg-red-600" : "bg-primary-500 hover:bg-primary-600"
+              isDanger ? "bg-red-500 hover:bg-red-600" : "bg-primary-500 hover:bg-primary-600"
             } disabled:opacity-50`}
           >
             {loading ? "處理中..." : confirmText}
