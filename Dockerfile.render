@@ -1,0 +1,39 @@
+# Render 免费版部署 Dockerfile
+# 用途：将 FastAPI + Next.js 合体到一个 Web Service
+# 方案 A：server.py 反向代理 + standalone 模式
+
+FROM python:3.12-slim
+
+# ---- Node.js 22 (用于构建前端) ----
+RUN apt-get update && apt-get install -y curl gnupg && \
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    apt-get install -y nodejs && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# ---- Python 依赖 ----
+COPY apps/api/requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# ---- Node 依赖 + 构建前端 ----
+COPY apps/web/package*.json ./apps/web/
+WORKDIR /app/apps/web
+RUN npm ci --legacy-peer-deps
+
+COPY apps/web/ ./ 
+RUN npm run build
+WORKDIR /app
+
+# ---- 复制后端代码 ----
+COPY apps/api/ ./apps/api/
+COPY apps/web/ ./apps/web/
+COPY .env .env 2>/dev/null || true
+COPY server.py ./server.py
+COPY start.sh ./start.sh
+
+RUN chmod +x ./start.sh
+
+# ---- 运行时 ----
+EXPOSE 10000
+CMD ["./start.sh"]
