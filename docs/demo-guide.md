@@ -1,6 +1,6 @@
 ﻿# Apple 子系统演示手册
 
-> **文档版本**: v1.0 | **日期**: 2026-07-19 | **负责人**: 同学 5
+> **文档版本**: v1.1 | **日期**: 2026-07-24 | **负责人**: 同学 5 / 同学 1（Leader）
 
 ---
 
@@ -8,16 +8,16 @@
 
 ### 1.1 启动服务
 
-`ash
+```bash
 # 后端（SQLite 模式）
 cd apps/api
-="sqlite+aiosqlite:///./test.db"
-uvicorn app.main:app --port 8000
+$env:DATABASE_URL="sqlite+aiosqlite:///./test.db"
+uvicorn app.main:app --port 8001
 
 # 前端（新终端）
 cd apps/web
 npm run dev
-`
+```
 
 ### 1.2 登录信息
 
@@ -33,6 +33,7 @@ npm run dev
 - 5 名在学学生（含 50 条考勤记录）
 - 2 笔收入 + 1 笔支出 + 2 份报价单
 - 3 项资产（2 项在用 + 1 项已注销）
+- 成绩评语模块支持 Excel 导入、统计、AI 评语审阅和 WhatsApp 推送
 
 ---
 
@@ -93,6 +94,23 @@ npm run dev
 
 ---
 
+### 场景 E：成绩评语 WhatsApp 全流程
+
+**入口**: 左侧导航 → 成绩评语 或 http://localhost:3000/dashboard/apple/scores
+
+**步骤**:
+1. 进入成绩导入 Tab，选择学年、学期、考试类型和班级。
+2. 点击选择 `.xlsx` 成绩文件，确认页面显示文件名和导入入口。
+3. 切换到成绩统计 Tab，查看班级平均、分数段、科目平均和排名。
+4. 切换到评语审阅 Tab，查看 AI 评语列表和状态计数。
+5. 编辑单条评语内容，保存后确认状态保持可审阅。
+6. 选择待审阅评语，点击批量确认。
+7. 选择已确认评语，点击 WhatsApp 推送；演示环境可使用 mock 配置。
+
+**预期结果**: 成绩导入入口、统计图表、评语审阅、批量确认和 WhatsApp 推送操作均可用；无 API Key 或 WhatsApp Token 泄露到前端日志。
+
+---
+
 ## 3. 演示要点
 
 | 要点 | 说明 |
@@ -102,6 +120,7 @@ npm run dev
 | 空状态 | 删除数据后查看 EmptyState 组件显示 |
 | 错误处理 | 输入无效数据查看前端校验反馈 |
 | 加载状态 | 观察 DataTable 组件的 loading 状态 |
+| 成绩评语链路 | 重点展示“导入 → 统计 → 生成评语 → 审阅确认 → WhatsApp 推送”闭环 |
 
 ---
 
@@ -113,7 +132,10 @@ npm run dev
 | 数据不显示 | 确认已运行种子脚本，数据库中有数据 |
 | 登录失败 | 确认 DATABASE_URL 指向正确的数据库文件 |
 | 前端样式错乱 | 清空浏览器缓存，重新加载 |
+| 成绩评语为空 | 先导入演示 Excel，或确认 `apple_scores` / `apple_score_comments` 表已有演示数据 |
+| AI 生成失败 | 检查请求是否填写 DeepSeek Key；演示时可先说明已用单元测试覆盖 Key 隔离和重试逻辑 |
+| WhatsApp 未真实发送 | 检查是否处于 mock mode，真实发送前需配置 `WHATSAPP_PHONE_NUMBER_ID` 与 `WHATSAPP_ACCESS_TOKEN` |
 
 ---
 
-*文档版本: v1.0 · 编制日期: 2026-07-19 · 负责人: 同学 5*
+*文档版本: v1.1 · 更新日期: 2026-07-24 · 负责人: 同学 5 / 同学 1（Leader）*

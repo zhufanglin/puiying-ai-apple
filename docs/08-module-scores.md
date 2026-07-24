@@ -2,7 +2,7 @@
 
 ## 1. 模組概覽
 
-本模組完成第二組同學 4 的後端交付：Excel 批量匯入、班級/個人成績統計、DeepSeek 繁體中文評語、教師審閱狀態機、WhatsApp 發送及逐名學生狀態追蹤。前端上傳、評語審閱及圖表頁面不在本模組改動範圍。
+本模組完成第二組成績評語 WhatsApp 交付：Excel 批量匯入、班級/個人成績統計、DeepSeek 繁體中文評語、教師審閱狀態機、WhatsApp 發送、逐名學生狀態追蹤，以及 `/dashboard/apple/scores` 前端工作流。後端由同學 4 负责，前端与架构收口由同学 1（Leader）负责。
 
 ## 2. 目錄結構
 
@@ -17,6 +17,9 @@ apps/api/app/modules/apple/scores/
 └── tests/test_scores.py
 apps/api/app/modules/apple/students/score_service.py  # Excel 解析與純統計算法
 apps/api/app/modules/apple/prompts/score_comment_zh_hk.md
+apps/web/app/(dashboard)/dashboard/apple/scores/page.tsx
+apps/web/lib/services/scores.ts
+apps/web/lib/types/scores.ts
 ```
 
 ## 3. 資料表
@@ -123,7 +126,19 @@ python -m unittest app.modules.apple.scores.tests.test_scores -v
 
 測試覆蓋長/寬表解析、部分失敗、重複資料、班級統計、個人排名、Prompt 約束、DeepSeek 重試與 Key 隔離、ORM 唯一鍵、狀態 schema 及路由註冊。
 
-## 12. 聯調清單
+## 12. 前端工作流
+
+入口：`/dashboard/apple/scores`
+
+页面包含三个主要视图：
+
+- 成绩导入：选择学年、学期、考试类型、班级和 `.xlsx` 文件，并调用导入接口。
+- 成绩统计：展示班级平均、分数段、科目平均和排名。
+- 评语审阅：展示 AI 评语、状态计数、单条编辑、批量确认和 WhatsApp 推送。
+
+前端统一通过 `apps/web/lib/services/scores.ts` 调用 `/api/v1/apple/scores/*`，类型定义集中在 `apps/web/lib/types/scores.ts`。页面已加入左侧导航和 Apple 总览快捷入口。
+
+## 13. 聯調清單
 
 1. 執行 Alembic migration。
 2. 用長表及寬表各匯入一次，核對成功與錯誤數。

@@ -1,6 +1,6 @@
 # Apple 子系统验收清单
 
-> **文档版本**: v1.0 | **日期**: 2026-07-19 | **负责人**: 同学 5
+> **文档版本**: v1.1 | **日期**: 2026-07-24 | **负责人**: 同学 5 / 同学 1（Leader）
 
 ---
 
@@ -40,6 +40,17 @@
 - [x] 学生待办事项列表
 - [x] 学生照片上传端点
 
+### 1.5 A5 成绩评语 WhatsApp
+
+- [x] 成绩评语后端路由已注册到 FastAPI
+- [x] Excel 成绩导入接口支持长表/宽表
+- [x] 班级统计、个人统计、分数段和排名服务可用
+- [x] AI 评语生成接口支持 DeepSeek Key 请求头隔离
+- [x] 评语列表、编辑、批量确认状态机可用
+- [x] WhatsApp 推送复用公共 `WhatsAppClient`
+- [x] 前端 `/dashboard/apple/scores` 已接入左侧导航和 Apple 总览快捷入口
+- [x] 前端包含成绩导入、统计图表、评语审阅、确认和推送操作
+
 ---
 
 ## 2. 测试验收（pytest 运行结果）
@@ -50,6 +61,8 @@
 | A2 Finance | 7 | 3 | 10 | [x] |
 | A3 Assets | 6 | 2 | 8 | [x] |
 | A4 Students | 1 | 7 | 8 | [x] |
+| A5 Scores Comments | 11 | 0 | 11 | [x] |
+| WhatsApp Client | 6 | 0 | 6 | [x] |
 | OCR Receipt AI | 24 | 0 | 24 | [x] |
 | OCR Invoice AI | 30 | 0 | 30 | [x] |
 
@@ -67,6 +80,8 @@
 | 6 | 无硬编码密钥 | 使用环境变量 | [x] |
 | 7 | API 文档 | 文档完整 | [x] |
 | 8 | 基本测试 | 有单元测试 | [x] |
+| 9 | 前端构建 | `npm run build` 通过 | [x] |
+| 10 | 浏览器验收 | 成绩页加载、Tab 切换、样式正常 | [x] |
 
 ## 4. 文档验收
 
@@ -79,21 +94,27 @@
 - [x] 06-testing-report.md
 - [x] 07-demo-guide.md
 - [x] 08-acceptance-checklist.md
+- [x] 08-module-scores.md
 - [x] README.md
 - [x] dashboard/apple/page.tsx
+- [x] dashboard/apple/scores/page.tsx
+- [x] docs/openapi.json
 
 ## 5. 演示验收
 
 - [x] 后端 API 全部可访问（4 个模块）
+- [x] 成绩评语页面可访问（/dashboard/apple/scores）
+- [x] 成绩导入、统计、评语审阅、WhatsApp 推送入口具备
 - [x] 演示种子数据完整（10 项验证通过）
 - [x] 权限系统有效（admin/wendy/tommy）
 - [x] 旧文件已清理
 - [x] written_off_at 序列化 bug 已修复
+- [x] 财务收入确认入库后刷新、分页第二页点击修复
 
 ## 6. 总结
 
-**全部 42 项验收条目均通过**。13 个 pytest 失败用例均为测试代码与模型字段/种子数据之间的不匹配，不影响 API 正常运行和演示。系统达到可演示状态。
+**核心演示验收条目均通过**。新增成绩评语模块 11 个测试、WhatsApp 公共客户端 6 个测试全部通过；历史 13 个 pytest 失败用例均为旧测试代码与模型字段/种子数据之间的不匹配，不影响 API 正常运行和演示。系统达到可演示状态。
 
 ---
 
-*文档版本: v1.0 · 编制日期: 2026-07-19 · 负责人: 同学 5*
+*文档版本: v1.1 · 更新日期: 2026-07-24 · 负责人: 同学 5 / 同学 1（Leader）*
