@@ -1,6 +1,8 @@
 # 培英中学 AI 数智化平台 — Apple 子系统
 
-培英中学校务管理数字化平台，涵盖 **奖状奖学金（A1）、财务收支（A2）、资产盘点（A3）、学生事务（A4）** 四大模块，集成百度 OCR 智能识别与 DeepSeek AI 结构化能力。
+培英中学校务管理数字化平台，涵盖 **奖状奖学金（A1）、财务收支（A2）、资产盘点（A3）、学生事务（A4）、成绩评语 WhatsApp（A5）** 等校务模块，集成 OCR 智能识别、DeepSeek AI 评语生成与 WhatsApp 家校推送能力。
+
+当前 `main` 已达到演示交付状态：前端工作台、后端 API、SQLite 演示数据、成绩评语工作流、通告管理和 WhatsApp 公共客户端均已完成基础联调。
 
 ---
 
@@ -29,6 +31,8 @@ puiying-ai-apple/
 - Python 3.12+
 - Node.js 18+
 - 百度 OCR API Key（可选，不配则用浏览器 Tesseract 降级）
+- DeepSeek API Key（可选，仅成绩评语生成时由页面临时填写）
+- WhatsApp Cloud API 配置（可选；演示可使用 mock mode）
 
 ### 1. 后端启动
 
@@ -82,6 +86,8 @@ npm install --legacy-peer-deps
 NEXT_PUBLIC_API_URL=http://localhost:8001
 ```
 
+当前前端主要通过 Next.js rewrites 代理 `/api/v1/*` 到 `http://127.0.0.1:8001/api/v1/*`，`.env.local` 保留给需要直接读取 API 地址的页面或后续部署使用。
+
 启动：
 
 ```bash
@@ -89,6 +95,20 @@ npm run dev
 ```
 
 访问 `http://localhost:3000`，用 `admin / admin123` 登录。
+
+如果刚运行过 `npm run build` 后再切回 `npm run dev`，遇到 React/Next development 与 production bundle 不匹配的报错，停止前端服务并清理 `apps/web/.next` 后重新启动。
+
+## 功能模块
+
+| 模块 | 路径 | 状态 |
+|------|------|------|
+| Apple 总览 | `/dashboard/apple` | 已完成 |
+| 奖状奖学金 | `/dashboard/apple/awards` | 已完成 |
+| 财务收支 | `/dashboard/apple/finance` | 已完成，收入入库刷新与分页交互已修复 |
+| 资产盘点 | `/dashboard/apple/assets` | 已完成 |
+| 学生事务 | `/dashboard/apple/students` | 已完成 |
+| 通告管理 | `/dashboard/apple/notifications` | 已完成，加载错误会明确提示 |
+| 成绩评语 WhatsApp | `/dashboard/apple/scores` | 已完成：导入、统计、AI 评语审阅、确认、推送入口 |
 
 ## 演示账号
 
@@ -112,6 +132,30 @@ OCR 使用三级降级策略，无需额外配置即可演示：
 
 有百度 Key 时自动启用，无 Key 时走 Tesseract.js，不影响基础流程演示。
 
+## 成绩评语与 WhatsApp
+
+成绩评语模块支持 `.xlsx` 长表/宽表导入、班级统计、科目平均、分数段、排名、DeepSeek 生成繁体中文评语、教师审阅确认，以及 WhatsApp 推送状态追踪。
+
+关键安全约束：
+
+- DeepSeek Key 只通过单次请求头传入，不落库、不写日志。
+- WhatsApp Token 通过后端环境变量配置，前端不保存 Token。
+- 真实发送前配置 `WHATSAPP_PHONE_NUMBER_ID`、`WHATSAPP_ACCESS_TOKEN`；演示环境可使用 mock mode。
+
+## 验证结果
+
+最新收口日期：2026-07-24。
+
+| 检查项 | 结果 |
+|------|------|
+| 前端构建 | `npm run build` 通过 |
+| 成绩模块单元测试 | 11 个通过 |
+| WhatsAppClient 单元测试 | 6 个通过 |
+| OpenAPI | 已重新生成，包含 9 个 `/api/v1/apple/scores/*` 接口 |
+| 浏览器验收 | 通告页、成绩页可打开；成绩页 Tab 正常；通告页数据加载正常 |
+
+完整结果见 `docs/testing-report.md` 和 `docs/acceptance-checklist.md`。
+
 ## 文档索引
 
 | 文档 | 说明 |
@@ -124,6 +168,9 @@ OCR 使用三级降级策略，无需额外配置即可演示：
 | docs/ocr-worker.md | OCR Worker 文档 |
 | docs/demo-guide.md | 演示手册 |
 | docs/testing-report.md | 测试报告 |
+| docs/acceptance-checklist.md | 验收清单 |
+| docs/code-review-report.md | Leader 代码评审报告 |
+| docs/openapi.json | OpenAPI 接口文档 |
 
 ---
 
