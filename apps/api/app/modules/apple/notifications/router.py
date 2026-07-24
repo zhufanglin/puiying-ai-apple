@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import json
+import os
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -266,3 +268,45 @@ async def list_notification_logs(
     if not notification:
         raise_error(*NOT_FOUND, status_code=404)
     return APIResponse(data=await repository.list_logs_by_notification(db, notification_id))
+
+
+@router.post("/{notification_id}/export-pdf", response_model=APIResponse[dict])
+async def export_notification_pdf(
+    notification_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+    _: User = Depends(require_permission(Permissions.NOTIFICATIONS_WRITE)),
+):
+    """导出通告为双语 PDF（中文页 + 英文页）"""
+    notification = await repository.get_notification(db, notification_id)
+    if not notification:
+        raise_error(*NOT_FOUND, status_code=404)
+
+    from app.core.config import get_settings
+
+    settings = get_settings()
+    output_dir = os.path.join(settings.UPLOAD_DIR, "notifications")
+    filename = f"notice_{notification_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+
+    filepath = service.export_notification_pdf(
+        title_zh=notification.title_zh,
+        title_en=notification.title_en or "",
+        content_zh=notification.content_zh,
+        content_en=notification.content_en or "",
+        output_dir=output_dir,
+        filename=filename,
+    )
+
+    await repository.update_notification(db, notification, {"pdf_path": filepath})
+
+    db.add(AuditLog(
+        user_id=user.id,
+        username=user.username,
+        action="export_pdf",
+        module="notifications",
+        entity_type="notification",
+        entity_id=notification_id,
+    ))
+    await db.flush()
+
+    return APIResponse(data={"pdf_path": filepath, "filename": filename})
