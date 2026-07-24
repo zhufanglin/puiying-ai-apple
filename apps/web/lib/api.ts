@@ -40,7 +40,7 @@ async function request<T>(
         localStorage.removeItem("token");
         window.location.href = "/";
       }
-      return json;
+      throw new Error("登录已过期，请重新登录");
     }
     const detail = typeof json.detail === "string"
       ? json.detail

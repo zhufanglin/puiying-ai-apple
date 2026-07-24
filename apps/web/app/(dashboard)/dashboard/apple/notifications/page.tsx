@@ -125,6 +125,7 @@ export default function NotificationsPage() {
   });
   const [classes, setClasses] = useState(FALLBACK_CLASSES);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [sendingId, setSendingId] = useState<number | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -168,12 +169,13 @@ export default function NotificationsPage() {
 
   const loadData = async () => {
     setLoading(true);
+    setError(null);
     try {
       const [templateRes, notificationRes, statsRes, studentsRes] = await Promise.all([
-        api.get<NoticeTemplate[]>("/apple/notifications/templates").catch(() => ({ data: [] })),
-        api.get<{ items: NotificationRecord[] }>("/apple/notifications").catch(() => ({ data: { items: [] } })),
-        api.get<NotificationStats>("/apple/notifications/stats").catch(() => ({ data: stats })),
-        api.get<any>("/apple/students").catch(() => ({ data: [] })),
+        api.get<NoticeTemplate[]>("/apple/notifications/templates"),
+        api.get<{ items: NotificationRecord[] }>("/apple/notifications"),
+        api.get<NotificationStats>("/apple/notifications/stats"),
+        api.get<any>("/apple/students"),
       ]);
 
       const nextTemplates = unwrapList<NoticeTemplate>(templateRes);
@@ -191,6 +193,11 @@ export default function NotificationsPage() {
         setDraft((current) => ({ ...current, template_id: String(nextTemplates[0].id) }));
       }
       if (!selectedId && nextNotifications[0]) setSelectedId(nextNotifications[0].id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "通告数据加载失败");
+      setTemplates([]);
+      setNotifications([]);
+      setLogs([]);
     } finally {
       setLoading(false);
     }
@@ -381,6 +388,12 @@ export default function NotificationsPage() {
           </button>
         }
       />
+
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+          {error}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
         <StatsCard label="通告模板" value={templateCount} icon={FileText} color="text-primary-600" />
