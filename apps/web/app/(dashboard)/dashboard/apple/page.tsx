@@ -7,6 +7,7 @@ import {
   Package,
   GraduationCap,
   Megaphone,
+  BarChart3,
   TrendingUp,
   ClipboardList,
   AlertTriangle,
@@ -91,6 +92,7 @@ export default function AppleOverviewPage() {
               { label: "資產盤點", href: "/dashboard/apple/assets", icon: Package },
               { label: "學生查詢", href: "/dashboard/apple/students", icon: GraduationCap },
               { label: "通告管理", href: "/dashboard/apple/notifications", icon: Megaphone },
+              { label: "成绩评语", href: "/dashboard/apple/scores", icon: BarChart3 },
             ].map((item) => (
               <a
                 key={item.label}

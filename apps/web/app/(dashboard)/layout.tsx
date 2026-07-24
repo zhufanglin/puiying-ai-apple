@@ -10,6 +10,7 @@ import {
   Package,
   GraduationCap,
   Megaphone,
+  BarChart3,
   ChevronLeft,
   Menu,
   LogOut,
@@ -45,6 +46,11 @@ const menuItems = [
     href: "/dashboard/apple/notifications",
     label: "通告管理",
     icon: Megaphone,
+  },
+  {
+    href: "/dashboard/apple/scores",
+    label: "成绩评语",
+    icon: BarChart3,
   },
 ];
 
